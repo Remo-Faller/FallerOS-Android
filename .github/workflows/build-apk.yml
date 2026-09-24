@@ -17,85 +17,119 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Pobranie repozytorium
+      # --------------------------------------------------
+      # 1. Pobierz kod
+      # --------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
+      # --------------------------------------------------
       # 2. Java 17
+      # --------------------------------------------------
       - name: Ustaw Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
 
-      # 3. Android SDK
-      - name: Ustaw Android SDK
-        uses: android-actions/setup-android@v3
+      # --------------------------------------------------
+      # 3. Sprawdź Android SDK dostępne na runnerze
+      # --------------------------------------------------
+      - name: Sprawdź Android SDK
+        shell: bash
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
 
-      # 4. Sprawdzenie struktury projektu
+          echo
+          echo "Zainstalowane platformy:"
+          ls -la "$ANDROID_HOME/platforms" || true
+
+          echo
+          echo "Zainstalowane build-tools:"
+          ls -la "$ANDROID_HOME/build-tools" || true
+
+      # --------------------------------------------------
+      # 4. Znajdź Gradle Wrapper
+      # --------------------------------------------------
       - name: Znajdź Gradle Wrapper
         shell: bash
         run: |
-          echo "Katalog repozytorium:"
-          pwd
-
-          echo
-          echo "Zawartość repozytorium:"
-          find . -maxdepth 3 -type f | sort | head -300
-
-          echo
-          echo "Szukam gradlew..."
+          echo "Szukam pliku gradlew..."
 
           GRADLEW=$(find . -type f -name "gradlew" -print -quit)
 
           if [ -z "$GRADLEW" ]; then
-            echo "::error::Nie znaleziono pliku gradlew!"
-            echo "Projekt Android musi zawierać Gradle Wrapper."
+            echo "::error::Nie znaleziono pliku gradlew."
+            echo
+            echo "Struktura projektu:"
+            find . -maxdepth 4 -type f | sort
             exit 1
           fi
 
           echo "Znaleziono: $GRADLEW"
 
           GRADLE_DIR=$(dirname "$GRADLEW")
-
-          # Usunięcie ./ z początku ścieżki
           GRADLE_DIR="${GRADLE_DIR#./}"
 
-          echo "Katalog projektu Android: $GRADLE_DIR"
+          if [ "$GRADLE_DIR" = "." ]; then
+            GRADLE_DIR=""
+          fi
+
+          echo "Katalog projektu Gradle: ${GRADLE_DIR:-.}"
 
           echo "GRADLE_DIR=$GRADLE_DIR" >> "$GITHUB_ENV"
 
-      # 5. Nadanie praw wykonywania
+      # --------------------------------------------------
+      # 5. Nadaj prawa Gradle Wrapper
+      # --------------------------------------------------
       - name: Nadaj uprawnienia Gradle Wrapper
         shell: bash
         run: |
-          chmod +x "$GRADLE_DIR/gradlew"
+          if [ -n "$GRADLE_DIR" ]; then
+            chmod +x "$GRADLE_DIR/gradlew"
+          else
+            chmod +x ./gradlew
+          fi
 
-      # 6. Zbudowanie APK
+      # --------------------------------------------------
+      # 6. Zaakceptuj licencje Android SDK
+      # --------------------------------------------------
+      - name: Zaakceptuj licencje Android SDK
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+
+      # --------------------------------------------------
+      # 7. Zbuduj APK
+      # --------------------------------------------------
       - name: Zbuduj APK
         shell: bash
-        working-directory: ${{ env.GRADLE_DIR }}
+        working-directory: ${{ env.GRADLE_DIR || '.' }}
         run: |
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug --stacktrace --no-daemon
 
-      # 7. Znalezienie wygenerowanego APK
-      - name: Znajdź APK
+      # --------------------------------------------------
+      # 8. Pokaż wygenerowane APK
+      # --------------------------------------------------
+      - name: Znajdź wygenerowane APK
         shell: bash
         run: |
-          echo "Wygenerowane pliki APK:"
+          echo "=== Wygenerowane pliki APK ==="
 
-          find "$GRADLE_DIR" \
+          find . \
             -type f \
             -name "*.apk" \
             -print
 
-      # 8. Udostępnienie APK jako artefaktu GitHub Actions
-      - name: Zapisz APK jako artefakt
+      # --------------------------------------------------
+      # 9. Udostępnij APK jako artefakt
+      # --------------------------------------------------
+      - name: Zapisz APK
         uses: actions/upload-artifact@v4
         with:
           name: FallerOS-debug-APK
           path: |
-            ${{ env.GRADLE_DIR }}/app/build/outputs/apk/debug/*.apk
+            **/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 30
