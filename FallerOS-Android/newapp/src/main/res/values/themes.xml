@@ -1,0 +1,11 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.NewApp" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/brand_bg</item>
+        <item name="android:statusBarColor">@color/brand_bg2</item>
+        <item name="android:navigationBarColor">@color/brand_bg</item>
+        <item name="colorPrimary">@color/brand_accent</item>
+        <item name="colorPrimaryDark">@color/brand_accent_2</item>
+        <item name="colorAccent">@color/brand_accent</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="M">false</item>
+    </style>
+</resources>

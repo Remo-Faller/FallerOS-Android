@@ -1,0 +1,8 @@
+<resources>
+    <color name="brand_bg">#0a0714</color>
+    <color name="brand_bg2">#1b1230</color>
+    <color name="brand_accent">#8b5cf6</color>
+    <color name="brand_accent_2">#c084fc</color>
+    <color name="brand_text">#f5f3ff</color>
+    <color name="brand_muted">#d4c7ff</color>
+</resources>

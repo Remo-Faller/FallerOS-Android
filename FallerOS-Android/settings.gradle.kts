@@ -14,4 +14,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "FallerOS-Android"
-include(":app")
+include(":app", ":newapp")
