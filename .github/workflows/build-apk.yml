@@ -2,8 +2,7 @@ name: Zbuduj APK Faller'OS
 
 # Buduje APK w chmurze GitHuba — nie wymaga Android Studio ani SDK
 # na Twoim komputerze. Uruchamia się automatycznie po wypchnięciu zmian
-# do gałęzi main/master, a także ręcznie z zakładki "Actions" (przycisk
-# "Run workflow").
+# do gałęzi main/master, a także ręcznie z zakładki "Actions".
 
 on:
   workflow_dispatch:
@@ -13,6 +12,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
+
     steps:
       - name: Pobierz kod
         uses: actions/checkout@v5
@@ -24,9 +24,9 @@ jobs:
           java-version: '17'
 
       - name: Zainstaluj Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
-      - name: Zainstaluj Gradle (projekt nie zawiera wrappera)
+      - name: Zainstaluj Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
