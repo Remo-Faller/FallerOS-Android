@@ -1,0 +1,2267 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Faller'OS</title>
+
+<!-- PWA: manifest, ikony, kolory paska -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2a0845">
+<meta name="background-color" content="#0a0212">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Faller'OS">
+<meta name="msapplication-TileColor" content="#2a0845">
+<meta name="msapplication-TileImage" content="icon-192.png">
+<style>
+:root{
+  --accent:#9B3CFF;
+  --accent-2:#5B12B7;
+  --bg-desktop-1:#040107;
+  --bg-desktop-2:#210436;
+  --win-bg: linear-gradient(180deg, rgba(60,20,95,.38), rgba(10,4,18,.42));
+  --win-header: linear-gradient(180deg, rgba(170,90,255,.55) 0%, rgba(90,20,150,.4) 55%, rgba(20,6,32,.55) 100%);
+  --win-border: rgba(185,130,255,.4);
+  --text:#f2ecff;
+  --text-dim:#c3aee8;
+  --taskbar-bg: linear-gradient(180deg, rgba(70,20,110,.62) 0%, rgba(10,3,18,.82) 100%);
+  --radius:16px;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: dark;
+}
+html.theme-light{
+  --bg-desktop-1:#dfe6f5;
+  --bg-desktop-2:#c9d6ef;
+  --win-bg:#ffffffee;
+  --win-header:#eef1fb;
+  --win-border:#c3c9e0;
+  --text:#1b1e2e;
+  --text-dim:#585e7d;
+  --taskbar-bg:#ffffffcc;
+  color-scheme: light;
+}
+html.theme-contrast{
+  --accent:#ffcc00;
+  --accent-2:#00e5ff;
+  --bg-desktop-1:#000000;
+  --bg-desktop-2:#000000;
+  --win-bg:#0a0a0af5;
+  --win-header:#000000;
+  --win-border:#ffcc00;
+  --text:#ffffff;
+  --text-dim:#cccccc;
+  --taskbar-bg:#000000ee;
+}
+*{box-sizing:border-box;}
+html,body{
+  margin:0;padding:0;width:100%;height:100%;overflow:hidden;
+  font-family:var(--font);
+  color:var(--text);
+  -webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+button, input, textarea, select{ font-family:inherit; color:inherit; }
+#desktop{
+  position:fixed;inset:0;
+  background: radial-gradient(circle at 20% 10%, var(--bg-desktop-2), var(--bg-desktop-1) 60%);
+  background-size:cover;background-position:center;
+  overflow:hidden;
+  transition: background .4s ease;
+}
+#desktop.custom-wallpaper{ background-image: var(--custom-wp); background-size:cover; background-position:center; }
+
+/* ---------- Desktop icons ---------- */
+#icon-layer{ position:absolute; inset:0; padding:14px; }
+.d-icon{
+  position:absolute; width:86px; height:92px;
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  padding:8px 4px; border-radius:10px; cursor:pointer;
+  text-align:center;
+}
+.d-icon.selected, .d-icon:active{ background:rgba(255,255,255,.14); }
+.d-icon .ic{
+  width:44px;height:44px;border-radius:11px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px; background:linear-gradient(145deg,var(--accent),var(--accent-2));
+  box-shadow:0 4px 10px rgba(0,0,0,.35);
+}
+.d-icon .lb{ font-size:11.5px; line-height:1.2; color:var(--text); text-shadow:0 1px 3px rgba(0,0,0,.6); word-break:break-word; max-width:82px; }
+
+/* ---------- Windows ---------- */
+.win{
+  position:absolute; min-width:260px; min-height:180px;
+  background:var(--win-bg); border:1px solid var(--win-border);
+  border-radius:var(--radius); overflow:hidden;
+  box-shadow:0 20px 50px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.12), inset 0 0 40px rgba(155,60,255,.06);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  display:flex; flex-direction:column;
+  animation: winopen .16s ease;
+}
+@keyframes winopen{ from{ transform:scale(.96); opacity:0;} to{transform:scale(1);opacity:1;} }
+.win.focused{ box-shadow:0 0 0 1px rgba(185,130,255,.5), 0 28px 70px rgba(0,0,0,.6), 0 0 34px rgba(155,60,255,.35), inset 0 1px 0 rgba(255,255,255,.16); border-color:var(--accent); }
+.win-header{
+  position:relative;
+  height:42px; flex:0 0 auto; display:flex; align-items:center; gap:8px;
+  padding:0 8px 0 12px; background:var(--win-header); cursor:grab;
+  border-bottom:1px solid var(--win-border);
+  overflow:hidden;
+}
+.win-header::before{
+  content:''; position:absolute; left:0; right:0; top:0; height:50%;
+  background:linear-gradient(180deg, rgba(255,255,255,.45), rgba(255,255,255,0));
+  pointer-events:none; mix-blend-mode:overlay;
+}
+.win-header:active{cursor:grabbing;}
+.win-title{ display:flex;align-items:center;gap:8px; flex:1; font-size:13px; font-weight:600; color:var(--text); overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.win-title .ic{font-size:16px;}
+.win-btns{display:flex;gap:6px;}
+.win-btn{
+  width:26px;height:26px;border:none;border-radius:7px;background:transparent;color:var(--text-dim);
+  font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+}
+.win-btn:hover{background:rgba(255,255,255,.12);color:var(--text);}
+.win-btn.close:hover{background:#e5484d;color:#fff;}
+.win-body{ flex:1; overflow:auto; position:relative; color:var(--text); }
+.win-resize{ position:absolute; right:0; bottom:0; width:18px;height:18px; cursor:nwse-resize; }
+.win.maximized{ border-radius:0 !important; }
+
+/* ---------- Taskbar ---------- */
+#taskbar{
+  position:fixed; left:0; right:0; bottom:0; height:58px;
+  background:var(--taskbar-bg); backdrop-filter:blur(24px) saturate(160%); -webkit-backdrop-filter:blur(24px) saturate(160%);
+  border-top:1px solid var(--win-border);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 -10px 30px rgba(90,20,150,.15);
+  display:flex; align-items:center; gap:8px; padding:0 10px; z-index:99999;
+}
+#start-btn{
+  position:relative; overflow:hidden;
+  display:flex;align-items:center;gap:8px; height:42px; width:42px; padding:0;border-radius:50%;
+  border:1px solid rgba(210,170,255,.5);
+  background:radial-gradient(circle at 32% 28%, #c98bff 0%, #9B3CFF 32%, #5B12B7 70%, #2a0845 100%);
+  color:#fff; justify-content:center;
+  font-weight:700; font-size:17px; cursor:pointer;
+  box-shadow:0 4px 14px rgba(90,10,150,.55), inset 0 1px 2px rgba(255,255,255,.6);
+}
+#start-btn::before{
+  content:''; position:absolute; left:8%; top:6%; width:84%; height:42%; border-radius:50% 50% 60% 60%/70% 70% 40% 40%;
+  background:linear-gradient(180deg, rgba(255,255,255,.75), rgba(255,255,255,0)); pointer-events:none;
+}
+#start-btn span.lbl{display:none;}
+#taskbar-apps{ flex:1; display:flex; gap:6px; overflow-x:auto; height:44px; align-items:center;}
+.tb-app{
+  height:38px; padding:0 12px; border-radius:9px; border:1px solid rgba(185,130,255,.18);
+  background:linear-gradient(180deg, rgba(155,80,255,.14), rgba(20,6,32,.12));
+  color:var(--text); display:flex;align-items:center;gap:6px;
+  font-size:13px; cursor:pointer; white-space:nowrap;
+}
+.tb-app.active{ border-color:var(--accent); background:linear-gradient(180deg, rgba(155,80,255,.32), rgba(20,6,32,.2)); box-shadow:inset 0 1px 0 rgba(255,255,255,.2); }
+#tray{ display:flex; align-items:center; gap:10px; color:var(--text-dim); font-size:12.5px; }
+#clock{ text-align:right; line-height:1.2; color:var(--text); font-weight:600; }
+#ai-btn{
+  width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--accent-2),var(--accent)); color:#fff; font-size:18px;
+  display:flex;align-items:center;justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,.4);
+}
+#install-btn{
+  width:40px;height:40px;border-radius:50%;border:1px solid rgba(210,170,255,.5);cursor:pointer;
+  background:radial-gradient(circle at 30% 25%, #c98bff, #5B12B7 70%); color:#fff; font-size:17px;
+  display:flex;align-items:center;justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,.4);
+  animation: installPulse 2.2s ease-in-out infinite;
+}
+@keyframes installPulse{ 0%,100%{box-shadow:0 4px 14px rgba(0,0,0,.4);} 50%{box-shadow:0 4px 18px rgba(155,60,255,.7);} }
+#lock-btn{
+  width:36px;height:36px;border-radius:50%;border:1px solid rgba(185,130,255,.3);cursor:pointer;
+  background:rgba(255,255,255,.06); color:var(--text); font-size:15px;
+  display:flex;align-items:center;justify-content:center;
+}
+#lock-btn:hover{ background:rgba(255,255,255,.14); }
+
+/* ---------- Start menu ---------- */
+#start-menu{
+  position:fixed; left:10px; bottom:68px; width:340px; max-height:70vh;
+  background:var(--win-bg); border:1px solid var(--win-border); border-radius:var(--radius);
+  backdrop-filter:blur(24px) saturate(160%); -webkit-backdrop-filter:blur(24px) saturate(160%);
+  box-shadow:0 20px 50px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.12), 0 0 30px rgba(155,60,255,.2);
+  display:none; flex-direction:column; z-index:100000; overflow:hidden;
+}
+#start-menu.open{display:flex;}
+#start-search{
+  margin:12px; padding:10px 12px; border-radius:9px; border:1px solid var(--win-border);
+  background:rgba(255,255,255,.06); color:var(--text); font-size:13px;
+}
+#start-apps{ overflow-y:auto; padding:0 8px 10px; display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.sm-app{
+  display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border-radius:10px;
+  background:rgba(255,255,255,.04); cursor:pointer; font-size:11.5px; text-align:center; color:var(--text);
+}
+.sm-app:hover{background:rgba(255,255,255,.12);}
+.sm-app .ic{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:19px;background:linear-gradient(145deg,var(--accent),var(--accent-2));}
+
+/* ---------- Context menu ---------- */
+.ctx-menu{
+  position:fixed; z-index:200000; min-width:190px; background:var(--win-header);
+  border:1px solid var(--win-border); border-radius:10px; padding:6px; box-shadow:0 20px 40px rgba(0,0,0,.5);
+  display:none;
+}
+.ctx-item{ padding:9px 12px; border-radius:7px; font-size:13px; cursor:pointer; color:var(--text); }
+.ctx-item:hover{ background:rgba(255,255,255,.1); }
+.ctx-sep{ height:1px; background:var(--win-border); margin:5px 4px; }
+
+/* ---------- Generic app UI ---------- */
+.app-pad{ padding:14px; height:100%; overflow:auto; }
+.btn{
+  border:1px solid var(--win-border); background:rgba(255,255,255,.06); color:var(--text);
+  padding:7px 12px; border-radius:8px; font-size:12.5px; cursor:pointer;
+}
+.btn:hover{background:rgba(255,255,255,.14);}
+.btn.primary{ background:linear-gradient(135deg,var(--accent),var(--accent-2)); border:none; color:#fff; font-weight:600;}
+.input, textarea.ta{
+  width:100%; border:1px solid var(--win-border); background:rgba(255,255,255,.05); color:var(--text);
+  padding:8px 10px; border-radius:8px; font-size:13px;
+}
+textarea.ta{ resize:none; font-family:'SFMono-Regular',Consolas,Menlo,monospace; }
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+
+/* File manager */
+.fm-wrap{display:flex; height:100%; flex-direction:column;}
+.fm-toolbar{display:flex; align-items:center; gap:6px; padding:8px; border-bottom:1px solid var(--win-border); flex-wrap:wrap;}
+.fm-path{flex:1; font-size:12px; color:var(--text-dim); overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fm-body{flex:1; overflow:auto; padding:10px; display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:6px; align-content:start;}
+.fm-item{display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 4px;border-radius:9px;cursor:pointer;font-size:11px;text-align:center;}
+.fm-item:hover{background:rgba(255,255,255,.08);}
+.fm-item.selected{background:rgba(255,255,255,.16);outline:1px solid var(--accent);}
+.fm-item .ic{font-size:30px;}
+.fm-item .nm{max-width:80px;word-break:break-word;line-height:1.15;}
+.fm-item.dragover{outline:2px dashed var(--accent-2);}
+
+/* calculator */
+.calc{display:flex;flex-direction:column;height:100%;padding:10px;gap:8px;}
+.calc-screen{background:rgba(255,255,255,.05); border-radius:10px; padding:14px; text-align:right; font-size:28px; font-weight:600; min-height:56px; word-break:break-all;}
+.calc-grid{flex:1; display:grid; grid-template-columns:repeat(4,1fr); gap:6px;}
+.calc-key{border:none;border-radius:9px;background:rgba(255,255,255,.07);color:var(--text);font-size:17px;cursor:pointer;}
+.calc-key:hover{background:rgba(255,255,255,.16);}
+.calc-key.op{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;}
+.calc-key.eq{background:var(--accent-2);color:#fff;}
+
+/* terminal */
+.term{background:#0b0c14; height:100%; padding:10px; font-family:Menlo,Consolas,monospace; font-size:13px; color:#8ef58e; overflow:auto;}
+.term-line{white-space:pre-wrap; word-break:break-word;}
+.term-input-row{display:flex; gap:6px;}
+.term-input-row input{flex:1;background:transparent;border:none;color:#eafff0;font-family:inherit;font-size:13px;outline:none;}
+.term-prompt{color:#6C63FF;}
+
+/* photo/media */
+.gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;padding:10px;}
+.gallery-grid img{width:100%;height:100px;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid var(--win-border);}
+.viewer{position:absolute;inset:0;background:#000;display:flex;align-items:center;justify-content:center;flex-direction:column;}
+.viewer img{max-width:92%;max-height:82%;object-fit:contain;}
+.viewer .vbar{position:absolute;top:8px;right:8px;display:flex;gap:6px;}
+.viewer .nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);border:none;color:#fff;font-size:22px;width:40px;height:40px;border-radius:50%;cursor:pointer;}
+
+/* theme app */
+.theme-swatches{display:flex;gap:10px;flex-wrap:wrap;}
+.swatch{width:70px;height:50px;border-radius:9px;cursor:pointer;border:2px solid transparent;}
+.swatch.active{border-color:var(--accent);}
+
+/* AI assistant panel */
+#ai-panel{
+  position:fixed; right:12px; bottom:74px; width:320px; max-height:70vh;
+  background:var(--win-bg); border:1px solid var(--win-border); border-radius:var(--radius);
+  backdrop-filter:blur(24px) saturate(160%); -webkit-backdrop-filter:blur(24px) saturate(160%);
+  box-shadow:0 20px 50px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.12), 0 0 30px rgba(155,60,255,.2);
+  display:none; flex-direction:column; z-index:100000; overflow:hidden;
+}
+#ai-panel.open{display:flex;}
+#ai-log{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;font-size:13px;}
+.ai-msg{padding:8px 10px;border-radius:10px;max-width:88%;}
+.ai-msg.bot{background:rgba(255,255,255,.08);align-self:flex-start;}
+.ai-msg.me{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;align-self:flex-end;}
+#ai-inrow{display:flex;gap:6px;padding:10px;border-top:1px solid var(--win-border);}
+#ai-inrow input{flex:1;}
+
+/* Games common */
+.game-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;padding:10px;}
+.ttt-grid{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);gap:6px;}
+.ttt-cell{background:rgba(255,255,255,.07);border-radius:9px;font-size:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.g2048-grid{display:grid;grid-template-columns:repeat(4,64px);grid-template-rows:repeat(4,64px);gap:6px;background:rgba(0,0,0,.2);padding:6px;border-radius:10px;}
+.g2048-cell{border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;background:rgba(255,255,255,.06);}
+.mine-grid{display:grid; gap:2px; }
+.mine-cell{width:26px;height:26px;background:rgba(255,255,255,.09);display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;border-radius:3px;}
+.mine-cell.open{background:rgba(255,255,255,.02);}
+.mine-cell.mine{background:#e5484d;}
+
+/* responsive / mobile */
+@media (max-width:720px){
+  .win{ min-width:0 !important; }
+  .win.mobile-full{ left:0 !important; top:0 !important; width:100% !important; height:calc(100% - 56px) !important; border-radius:0; }
+  .d-icon{width:74px;}
+  #start-menu{width:92vw; left:4vw;}
+  #ai-panel{width:92vw; right:4vw;}
+}
+
+.empty-hint{color:var(--text-dim); font-size:12.5px; padding:20px; text-align:center;}
+
+/* ---------- Ekran logowania ---------- */
+#lock-screen{
+  position:fixed; inset:0; z-index:999999;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  background: radial-gradient(circle at 25% 15%, #3a1257 0%, #12041e 55%, #030106 100%);
+  color:#fff;
+}
+#lock-clock{ font-size:clamp(48px,10vw,86px); font-weight:200; letter-spacing:2px; text-shadow:0 4px 30px rgba(155,60,255,.5); }
+#lock-date{ font-size:14px; color:#c3aee8; margin-bottom:22px; text-transform:capitalize; }
+#lock-box{
+  width:280px; display:flex; flex-direction:column; gap:10px; align-items:center;
+  background:linear-gradient(180deg, rgba(60,20,95,.4), rgba(10,4,18,.5));
+  border:1px solid rgba(185,130,255,.35); border-radius:18px; padding:26px 22px;
+  backdrop-filter:blur(20px) saturate(160%); -webkit-backdrop-filter:blur(20px) saturate(160%);
+  box-shadow:0 30px 70px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.14);
+}
+#lock-box.shake{ animation: shake .4s; }
+@keyframes shake{ 10%,90%{transform:translateX(-2px);} 20%,80%{transform:translateX(4px);} 30%,50%,70%{transform:translateX(-8px);} 40%,60%{transform:translateX(8px);} }
+#lock-avatar{
+  width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;
+  background:radial-gradient(circle at 32% 28%, #c98bff 0%, #9B3CFF 32%, #5B12B7 70%, #2a0845 100%);
+  box-shadow:0 6px 18px rgba(90,10,150,.55), inset 0 1px 2px rgba(255,255,255,.6);
+}
+#lock-title{ font-size:17px; font-weight:700; }
+#lock-box input{ text-align:center; }
+#lock-error{ color:#ff8b8b; font-size:12px; min-height:14px; text-align:center; }
+#lock-reset-hint{ font-size:11px; color:var(--text-dim); text-align:center; margin-top:4px; }
+#lock-reset-link{ text-decoration:underline; cursor:pointer; }
+#lock-screen.unlocked{ display:none; }
+</style>
+</head>
+<body>
+
+<div id="lock-screen">
+  <div id="lock-clock">--:--</div>
+  <div id="lock-date"></div>
+  <div id="lock-box">
+    <div id="lock-avatar">⬡</div>
+    <div id="lock-title">Faller'OS</div>
+    <div id="lock-sub" class="empty-hint" style="padding:0 0 8px;"></div>
+    <input type="password" id="lock-pass" class="input" placeholder="Hasło" autocomplete="current-password">
+    <input type="password" id="lock-pass2" class="input" placeholder="Powtórz hasło" style="display:none;">
+    <button class="btn primary" id="lock-submit" style="width:100%;">Zaloguj</button>
+    <div id="lock-error"></div>
+    <div id="lock-reset-hint">Zapomniałeś hasła? <span id="lock-reset-link">Zresetuj logowanie</span></div>
+  </div>
+</div>
+
+<div id="desktop">
+  <div id="icon-layer"></div>
+</div>
+
+<div id="windows-layer"></div>
+
+<div id="start-menu">
+  <input id="start-search" class="input" placeholder="Szukaj aplikacji…">
+  <div id="start-apps"></div>
+</div>
+
+<div id="ai-panel">
+  <div style="padding:12px;border-bottom:1px solid var(--win-border);font-weight:700;display:flex;align-items:center;gap:8px;">
+    <span>🤖</span> Asystent FallerAI
+  </div>
+  <div id="ai-log"></div>
+  <div id="ai-inrow">
+    <input id="ai-input" class="input" placeholder="Napisz polecenie…">
+    <button class="btn primary" id="ai-send">Wyślij</button>
+  </div>
+</div>
+
+<div id="ctx-menu" class="ctx-menu"></div>
+
+<div id="taskbar">
+  <button id="start-btn" title="Start">⊞</button>
+  <div id="taskbar-apps"></div>
+  <div id="tray">
+    <button id="lock-btn" title="Zablokuj system">🔒</button>
+    <button id="install-btn" title="Zainstaluj Faller'OS" style="display:none;">⤓</button>
+    <button id="ai-btn" title="Asystent AI">🤖</button>
+    <div id="clock">--:--<br><span id="clock-date" style="font-weight:400;">--</span></div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   LOGOWANIE — ekran blokady wymagający hasła przed wejściem do systemu.
+   Uwaga: to zabezpieczenie działa wyłącznie po stronie przeglądarki
+   (hasło jest haszowane z solą i trzymane w localStorage) — chroni przed
+   przypadkowym dostępem, ale nie jest to szyfrowanie danych ani prawdziwe
+   bezpieczeństwo wobec kogoś z dostępem do narzędzi developerskich.
+   ========================================================================= */
+(function(){
+"use strict";
+const LS_AUTH = 'fallers_os_auth_v1';
+
+function lsGetRaw(key){ try{ return localStorage.getItem(key); }catch(e){ return null; } }
+function lsSetRaw(key,val){ try{ localStorage.setItem(key,val); }catch(e){} }
+function lsDelRaw(key){ try{ localStorage.removeItem(key); }catch(e){} }
+function safeParse(s,fb){ try{ return JSON.parse(s); }catch(e){ return fb; } }
+
+function randomHex(len){
+  const bytes = new Uint8Array(len);
+  if(window.crypto && crypto.getRandomValues) crypto.getRandomValues(bytes);
+  else for(let i=0;i<len;i++) bytes[i]=Math.floor(Math.random()*256);
+  return Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function sha256Hex(str){
+  if(window.crypto && crypto.subtle){
+    try{
+      const enc = new TextEncoder().encode(str);
+      const buf = await crypto.subtle.digest('SHA-256', enc);
+      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    }catch(e){ /* przechodzimy do fallbacku poniżej */ }
+  }
+  // prosty fallback (gdy Web Crypto niedostępne, np. bardzo stara przeglądarka)
+  let h1=0, h2=0;
+  for(let i=0;i<str.length;i++){ h1=(Math.imul(31,h1)+str.charCodeAt(i))|0; h2=(Math.imul(131,h2)+str.charCodeAt(i))|0; }
+  return 'fb'+(h1>>>0).toString(16)+(h2>>>0).toString(16);
+}
+function getAuth(){ return safeParse(lsGetRaw(LS_AUTH), null); }
+function saveAuth(a){ lsSetRaw(LS_AUTH, JSON.stringify(a)); }
+
+const screenEl = document.getElementById('lock-screen');
+const boxEl = document.getElementById('lock-box');
+const subEl = document.getElementById('lock-sub');
+const pass1 = document.getElementById('lock-pass');
+const pass2 = document.getElementById('lock-pass2');
+const submitBtn = document.getElementById('lock-submit');
+const errEl = document.getElementById('lock-error');
+const resetLink = document.getElementById('lock-reset-link');
+
+let mode = 'login'; // 'login' | 'setup'
+
+function refreshMode(){
+  const auth = getAuth();
+  mode = auth ? 'login' : 'setup';
+  pass1.value=''; pass2.value=''; errEl.textContent='';
+  if(mode==='setup'){
+    subEl.textContent = 'Ustaw hasło, aby zabezpieczyć dostęp do systemu.';
+    pass2.style.display='block';
+    submitBtn.textContent = 'Ustaw hasło i zaloguj';
+    document.getElementById('lock-reset-hint').style.display='none';
+  } else {
+    subEl.textContent = 'Podaj hasło, aby się zalogować.';
+    pass2.style.display='none';
+    submitBtn.textContent = 'Zaloguj';
+    document.getElementById('lock-reset-hint').style.display='block';
+  }
+  pass1.focus();
+}
+
+function showError(msg){
+  errEl.textContent = msg;
+  boxEl.classList.remove('shake'); void boxEl.offsetWidth; boxEl.classList.add('shake');
+}
+
+function unlock(){
+  screenEl.classList.add('unlocked');
+}
+function lockNow(){
+  refreshMode();
+  screenEl.classList.remove('unlocked');
+}
+
+async function submit(){
+  const auth = getAuth();
+  if(mode==='setup'){
+    const p1=pass1.value, p2=pass2.value;
+    if(p1.length<4){ showError('Hasło musi mieć min. 4 znaki.'); return; }
+    if(p1!==p2){ showError('Hasła nie są identyczne.'); return; }
+    const salt = randomHex(16);
+    const hash = await sha256Hex(salt+p1);
+    saveAuth({salt, hash});
+    unlock();
+  } else {
+    const p1=pass1.value;
+    if(!auth){ refreshMode(); return; }
+    const hash = await sha256Hex(auth.salt+p1);
+    if(hash===auth.hash){ unlock(); }
+    else { showError('Nieprawidłowe hasło.'); pass1.value=''; pass1.focus(); }
+  }
+}
+submitBtn.addEventListener('click', submit);
+[pass1,pass2].forEach(inp=> inp.addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); }));
+resetLink.addEventListener('click', ()=>{
+  if(confirm('To usunie zapisane hasło logowania (pliki i ustawienia systemu pozostaną nietknięte). Będziesz mógł ustawić nowe hasło. Kontynuować?')){
+    lsDelRaw(LS_AUTH);
+    refreshMode();
+  }
+});
+
+// zegar na ekranie logowania
+function tickLockClock(){
+  const d = new Date();
+  document.getElementById('lock-clock').textContent = d.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('lock-date').textContent = d.toLocaleDateString('pl-PL',{weekday:'long', day:'numeric', month:'long'});
+}
+tickLockClock(); setInterval(tickLockClock, 1000);
+
+refreshMode();
+
+window.NimbusAuth = {
+  isConfigured: ()=> !!getAuth(),
+  lock: lockNow,
+  async changePassword(oldPass, newPass){
+    const auth = getAuth();
+    if(auth){
+      const h = await sha256Hex(auth.salt+oldPass);
+      if(h!==auth.hash) return {ok:false, error:'Nieprawidłowe obecne hasło.'};
+    }
+    if(newPass.length<4) return {ok:false, error:'Nowe hasło musi mieć min. 4 znaki.'};
+    const salt = randomHex(16);
+    const hash = await sha256Hex(salt+newPass);
+    saveAuth({salt,hash});
+    return {ok:true};
+  },
+  disable(){ lsDelRaw(LS_AUTH); },
+};
+})();
+</script>
+
+<script>
+/* =========================================================================
+   Faller'OS — silnik systemu (storage, FS, okna, pulpit, pasek zadań)
+   ========================================================================= */
+(function(){
+"use strict";
+
+const LS_FS = 'nimbusos_fs_v1';
+const LS_SETTINGS = 'nimbusos_settings_v1';
+const LS_LAYOUT = 'nimbusos_layout_v1';
+
+function uid(){ return 'id'+Math.random().toString(36).slice(2)+Date.now().toString(36); }
+function safeParse(s,fallback){ try{ return JSON.parse(s); }catch(e){ return fallback; } }
+
+/* ---------------- Storage: local persistence (works when the file is
+   saved and opened from disk / a local server; in some sandboxed preview
+   contexts a browser may restrict localStorage for local files). --------- */
+let storageOK = true;
+try{ localStorage.setItem('__t','1'); localStorage.removeItem('__t'); }catch(e){ storageOK=false; }
+let memoryStore = {};
+function lsGet(key){
+  if(storageOK){ return localStorage.getItem(key); }
+  return memoryStore[key] || null;
+}
+function lsSet(key,val){
+  if(storageOK){ try{ localStorage.setItem(key,val); }catch(e){ memoryStore[key]=val; } }
+  else memoryStore[key]=val;
+}
+
+/* ---------------- Filesystem ---------------- */
+function defaultFS(){
+  return {
+    root:{ type:'folder', children:{
+      'Pulpit': { type:'folder', children:{
+        'Witaj w Faller\'OS.txt': fileNode('txt','Cześć! 👋\n\nTo jest Faller\'OS — system operacyjny działający w przeglądarce.\n\n- Kliknij dwukrotnie ikonę, aby otworzyć aplikację.\n- Przeciągaj okna za pasek tytułu.\n- Wszystko zapisuje się automatycznie lokalnie.\n- Kliknij przycisk 🤖, aby porozmawiać z asystentem AI.\n\nMiłej zabawy!','text/plain'),
+      }},
+      'Dokumenty': { type:'folder', children:{
+        'Notatki.txt': fileNode('txt','Twoje notatki...', 'text/plain'),
+        'Przykład.py': fileNode('py', `# Przykładowy skrypt Pythona — kliknij dwukrotnie, aby otworzyć w Konsoli Python
+print("Cześć z Pythona w Faller'OS! 🐍")
+
+for i in range(1, 6):
+    print(i, '*', i, '=', i*i)
+`, 'text/x-python')
+      }},
+      'Obrazy': { type:'folder', children:{} },
+      'Muzyka': { type:'folder', children:{} },
+      'Wideo': { type:'folder', children:{} },
+      'Kosz': { type:'folder', trash:true, children:{} },
+    }}
+  };
+}
+function fileNode(ext, content, mime){
+  return { type:'file', ext, content, mime: mime||'text/plain', modified: Date.now() };
+}
+
+let FS = safeParse(lsGet(LS_FS), null) || defaultFS();
+function saveFS(){ lsSet(LS_FS, JSON.stringify(FS)); }
+
+function getNode(pathArr){
+  let n = FS.root;
+  for(const p of pathArr){
+    if(!n || n.type!=='folder' || !n.children || !n.children[p]) return null;
+    n = n.children[p];
+  }
+  return n;
+}
+function getParentAndName(pathArr){
+  const name = pathArr[pathArr.length-1];
+  const parent = getNode(pathArr.slice(0,-1));
+  return {parent, name};
+}
+function listDir(pathArr){
+  const n = getNode(pathArr);
+  if(!n || n.type!=='folder') return [];
+  return Object.keys(n.children).sort((a,b)=>{
+    const A=n.children[a], B=n.children[b];
+    if(A.type!==B.type) return A.type==='folder' ? -1 : 1;
+    return a.localeCompare(b,'pl');
+  }).map(name=>({name, node:n.children[name]}));
+}
+function uniqueName(dirNode, base){
+  if(!dirNode.children[base]) return base;
+  let i=2;
+  const dot = base.lastIndexOf('.');
+  const stem = dot>0 ? base.slice(0,dot) : base;
+  const ext = dot>0 ? base.slice(dot) : '';
+  while(dirNode.children[stem+' ('+i+')'+ext]) i++;
+  return stem+' ('+i+')'+ext;
+}
+function createFolder(pathArr, name){
+  const dir = getNode(pathArr); if(!dir||dir.type!=='folder') return null;
+  const n = uniqueName(dir, name||'Nowy folder');
+  dir.children[n] = {type:'folder', children:{}};
+  saveFS(); return n;
+}
+function createFile(pathArr, name, ext, content, mime){
+  const dir = getNode(pathArr); if(!dir||dir.type!=='folder') return null;
+  const n = uniqueName(dir, name);
+  dir.children[n] = fileNode(ext, content, mime);
+  saveFS(); return n;
+}
+function deleteNode(pathArr, toTrash){
+  const {parent,name} = getParentAndName(pathArr);
+  if(!parent) return;
+  if(toTrash && pathArr[0]!=='Kosz'){
+    const trash = getNode(['Kosz']);
+    const nn = uniqueName(trash, name);
+    trash.children[nn] = parent.children[name];
+    delete parent.children[name];
+  } else {
+    delete parent.children[name];
+  }
+  saveFS();
+}
+function renameNode(pathArr, newName){
+  const {parent,name} = getParentAndName(pathArr);
+  if(!parent || !newName || newName===name) return false;
+  if(parent.children[newName]) return false;
+  parent.children[newName] = parent.children[name];
+  delete parent.children[name];
+  saveFS(); return true;
+}
+function moveNode(srcPathArr, destDirPathArr){
+  const {parent,name} = getParentAndName(srcPathArr);
+  const dest = getNode(destDirPathArr);
+  if(!parent||!dest||dest.type!=='folder') return false;
+  if(JSON.stringify(srcPathArr.slice(0,-1))===JSON.stringify(destDirPathArr)) return false;
+  const nn = uniqueName(dest, name);
+  dest.children[nn] = parent.children[name];
+  delete parent.children[name];
+  saveFS(); return true;
+}
+function pathToStr(pathArr){ return '/'+pathArr.join('/'); }
+
+/* ---------------- Settings / Theme ---------------- */
+let SETTINGS = safeParse(lsGet(LS_SETTINGS), null) || {
+  theme:'dark', wallpaperPreset:'aero', customWallpaper:null, fontScale:1
+};
+function saveSettings(){ lsSet(LS_SETTINGS, JSON.stringify(SETTINGS)); }
+
+const WALLPAPERS = {
+  aero:'radial-gradient(circle at 22% 12%, #6a1fc2 0%, #2a0845 42%, #050108 78%)',
+  nebula:'radial-gradient(circle at 20% 10%, #3a1257, #0a0210 60%)',
+  ocean:'radial-gradient(circle at 80% 20%, #164e63, #0f172a 65%)',
+  sunset:'radial-gradient(circle at 30% 80%, #7c3f58, #241726 65%)',
+  forest:'radial-gradient(circle at 70% 15%, #1f4d3d, #10221c 65%)',
+  mono:'linear-gradient(160deg, #1a0b26, #050107)',
+};
+
+function applyTheme(){
+  const html = document.documentElement;
+  html.classList.remove('theme-light','theme-dark','theme-contrast');
+  html.classList.add('theme-'+SETTINGS.theme);
+  document.body.style.fontSize = (13*SETTINGS.fontScale)+'px';
+  const desktop = document.getElementById('desktop');
+  if(SETTINGS.customWallpaper){
+    desktop.classList.add('custom-wallpaper');
+    desktop.style.setProperty('--custom-wp', `url(${SETTINGS.customWallpaper})`);
+  } else {
+    desktop.classList.remove('custom-wallpaper');
+    desktop.style.background = WALLPAPERS[SETTINGS.wallpaperPreset] || WALLPAPERS.nebula;
+  }
+}
+applyTheme();
+
+/* ---------------- Clock ---------------- */
+function tickClock(){
+  const d = new Date();
+  document.getElementById('clock').innerHTML =
+    d.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})+
+    '<br><span id="clock-date" style="font-weight:400;">'+d.toLocaleDateString('pl-PL',{day:'2-digit',month:'2-digit'})+'</span>';
+}
+tickClock(); setInterval(tickClock,10000);
+
+/* =========================================================================
+   WINDOW MANAGER
+   ========================================================================= */
+const winLayer = document.getElementById('windows-layer');
+const taskbarApps = document.getElementById('taskbar-apps');
+let windows = {}; // id -> record
+let zTop = 10;
+let isMobile = ()=> window.innerWidth <= 720;
+
+function openWindow(opts){
+  // opts: {app, title, icon, render(bodyEl, winRecord), width, height, x, y, singleton, onFocus}
+  if(opts.singleton){
+    const existing = Object.values(windows).find(w=>w.app===opts.app && w.singletonKey===opts.singletonKey);
+    if(existing){ focusWindow(existing.id); if(existing.minimized) toggleMinimize(existing.id); return existing; }
+  }
+  const id = uid();
+  const w = 	opts.width || 480, h = opts.height || 360;
+  const cx = opts.x!=null ? opts.x : 40+ (Object.keys(windows).length*24)%200;
+  const cy = opts.y!=null ? opts.y : 40+ (Object.keys(windows).length*20)%160;
+
+  const el = document.createElement('div');
+  el.className='win'; el.style.left=cx+'px'; el.style.top=cy+'px';
+  el.style.width=w+'px'; el.style.height=h+'px';
+  el.innerHTML = `
+    <div class="win-header">
+      <div class="win-title"><span class="ic">${opts.icon||'🪟'}</span><span class="ttl">${opts.title||'Okno'}</span></div>
+      <div class="win-btns">
+        <button class="win-btn min" title="Minimalizuj">–</button>
+        <button class="win-btn max" title="Maksymalizuj">▢</button>
+        <button class="win-btn close" title="Zamknij">✕</button>
+      </div>
+    </div>
+    <div class="win-body"></div>
+    <div class="win-resize"></div>
+  `;
+  winLayer.appendChild(el);
+  if(isMobile()) el.classList.add('mobile-full');
+
+  const record = {id, app:opts.app, title:opts.title, icon:opts.icon, el, minimized:false, maximized:false,
+    singletonKey:opts.singletonKey, prevRect:null};
+  windows[id]=record;
+
+  const body = el.querySelector('.win-body');
+  focusWindow(id);
+  makeDraggable(el, el.querySelector('.win-header'), record);
+  makeResizable(el, el.querySelector('.win-resize'), record);
+  el.addEventListener('mousedown', ()=>focusWindow(id));
+  el.addEventListener('touchstart', ()=>focusWindow(id), {passive:true});
+
+  el.querySelector('.win-btn.close').onclick = ()=>closeWindow(id);
+  el.querySelector('.win-btn.min').onclick = ()=>toggleMinimize(id);
+  el.querySelector('.win-btn.max').onclick = ()=>toggleMaximize(id);
+  el.querySelector('.win-header').ondblclick = ()=>toggleMaximize(id);
+
+  addTaskbarEntry(record);
+  try{ opts.render(body, record); }catch(e){ body.innerHTML='<div class="empty-hint">Błąd aplikacji: '+e.message+'</div>'; console.error(e); }
+  return record;
+}
+
+function focusWindow(id){
+  const r = windows[id]; if(!r) return;
+  zTop++; r.el.style.zIndex=zTop;
+  Object.values(windows).forEach(w=>w.el.classList.remove('focused'));
+  r.el.classList.add('focused');
+  Array.from(taskbarApps.children).forEach(c=>c.classList.toggle('active', c.dataset.id===id));
+  if(r.minimized){ r.minimized=false; r.el.style.display='flex'; }
+}
+function closeWindow(id){
+  const r = windows[id]; if(!r) return;
+  if(r.onClose){ try{r.onClose();}catch(e){} }
+  r.el.remove();
+  delete windows[id];
+  const tb = taskbarApps.querySelector(`[data-id="${id}"]`);
+  if(tb) tb.remove();
+}
+function toggleMinimize(id){
+  const r = windows[id]; if(!r) return;
+  r.minimized = !r.minimized;
+  r.el.style.display = r.minimized ? 'none':'flex';
+}
+function toggleMaximize(id){
+  const r = windows[id]; if(!r) return;
+  if(!r.maximized){
+    r.prevRect = {left:r.el.style.left, top:r.el.style.top, width:r.el.style.width, height:r.el.style.height};
+    r.el.style.left='0'; r.el.style.top='0';
+    r.el.style.width='100vw'; r.el.style.height='calc(100vh - 56px)';
+    r.maximized=true; r.el.classList.add('maximized');
+  } else {
+    Object.assign(r.el.style, r.prevRect);
+    r.maximized=false; r.el.classList.remove('maximized');
+  }
+}
+function addTaskbarEntry(r){
+  const btn = document.createElement('div');
+  btn.className='tb-app'; btn.dataset.id=r.id;
+  btn.innerHTML = `<span>${r.icon||'🪟'}</span><span>${r.title||''}</span>`;
+  btn.onclick = ()=>{
+    if(r.minimized || r.el.style.display==='none'){ focusWindow(r.id); }
+    else if(r.el.classList.contains('focused')){ toggleMinimize(r.id); }
+    else focusWindow(r.id);
+  };
+  taskbarApps.appendChild(btn);
+}
+
+function makeDraggable(el, handle, record){
+  let sx,sy,ox,oy,dragging=false;
+  function start(cx,cy){
+    if(record.maximized) return;
+    dragging=true; sx=cx; sy=cy;
+    ox=el.offsetLeft; oy=el.offsetTop;
+    focusWindow(record.id);
+  }
+  function move(cx,cy){
+    if(!dragging) return;
+    let nx=ox+(cx-sx), ny=oy+(cy-sy);
+    ny=Math.max(0,ny);
+    el.style.left=nx+'px'; el.style.top=ny+'px';
+  }
+  function end(){ dragging=false; }
+  handle.addEventListener('mousedown', e=>{ start(e.clientX,e.clientY); e.preventDefault(); });
+  window.addEventListener('mousemove', e=>move(e.clientX,e.clientY));
+  window.addEventListener('mouseup', end);
+  handle.addEventListener('touchstart', e=>{ const t=e.touches[0]; start(t.clientX,t.clientY); }, {passive:true});
+  window.addEventListener('touchmove', e=>{ if(dragging){ const t=e.touches[0]; move(t.clientX,t.clientY); } }, {passive:true});
+  window.addEventListener('touchend', end);
+}
+function makeResizable(el, handle, record){
+  let sx,sy,ow,oh,resizing=false;
+  function start(cx,cy){ if(record.maximized) return; resizing=true; sx=cx;sy=cy; ow=el.offsetWidth; oh=el.offsetHeight; }
+  function move(cx,cy){
+    if(!resizing) return;
+    el.style.width=Math.max(260, ow+(cx-sx))+'px';
+    el.style.height=Math.max(180, oh+(cy-sy))+'px';
+  }
+  function end(){ resizing=false; }
+  handle.addEventListener('mousedown', e=>{ start(e.clientX,e.clientY); e.preventDefault(); e.stopPropagation(); });
+  window.addEventListener('mousemove', e=>move(e.clientX,e.clientY));
+  window.addEventListener('mouseup', end);
+  handle.addEventListener('touchstart', e=>{ const t=e.touches[0]; start(t.clientX,t.clientY); e.stopPropagation();}, {passive:true});
+  window.addEventListener('touchmove', e=>{ if(resizing){ const t=e.touches[0]; move(t.clientX,t.clientY); } }, {passive:true});
+  window.addEventListener('touchend', end);
+}
+
+window.NimbusWM = { openWindow, closeWindow, focusWindow, windows };
+window.NimbusFS = { FS, getNode, listDir, createFile, createFolder, deleteNode, renameNode, moveNode, saveFS, uniqueName, pathToStr, getParentAndName };
+window.NimbusSettings = { SETTINGS, saveSettings, applyTheme, WALLPAPERS };
+
+/* =========================================================================
+   CONTEXT MENU helper
+   ========================================================================= */
+const ctxMenuEl = document.getElementById('ctx-menu');
+function showCtxMenu(x,y, items){
+  ctxMenuEl.innerHTML='';
+  items.forEach(it=>{
+    if(it.sep){ const s=document.createElement('div'); s.className='ctx-sep'; ctxMenuEl.appendChild(s); return; }
+    const d = document.createElement('div'); d.className='ctx-item'; d.textContent=it.label;
+    d.onclick = ()=>{ hideCtxMenu(); it.action(); };
+    ctxMenuEl.appendChild(d);
+  });
+  const vw=window.innerWidth, vh=window.innerHeight;
+  ctxMenuEl.style.display='block';
+  const rect = ctxMenuEl.getBoundingClientRect();
+  ctxMenuEl.style.left = Math.min(x, vw-rect.width-8)+'px';
+  ctxMenuEl.style.top = Math.min(y, vh-rect.height-8)+'px';
+}
+function hideCtxMenu(){ ctxMenuEl.style.display='none'; }
+document.addEventListener('click', hideCtxMenu);
+window.addEventListener('scroll', hideCtxMenu, true);
+window.showCtxMenu = showCtxMenu;
+
+/* =========================================================================
+   START MENU + APP REGISTRY (populated in apps.js section below)
+   ========================================================================= */
+window.NimbusApps = {}; // appId -> {name,icon,open}
+function registerApp(id, name, icon, openFn){
+  window.NimbusApps[id] = {id, name, icon, open:openFn};
+}
+window.registerApp = registerApp;
+
+function buildStartMenu(filter){
+  const grid = document.getElementById('start-apps');
+  grid.innerHTML='';
+  Object.values(window.NimbusApps)
+    .filter(a=> !filter || a.name.toLowerCase().includes(filter.toLowerCase()))
+    .forEach(a=>{
+      const el = document.createElement('div'); el.className='sm-app';
+      el.innerHTML = `<div class="ic">${a.icon}</div><div>${a.name}</div>`;
+      el.onclick = ()=>{ a.open(); document.getElementById('start-menu').classList.remove('open'); };
+      grid.appendChild(el);
+    });
+}
+document.getElementById('start-btn').onclick = (e)=>{
+  e.stopPropagation();
+  const m = document.getElementById('start-menu');
+  m.classList.toggle('open');
+  if(m.classList.contains('open')){ buildStartMenu(''); document.getElementById('start-search').value=''; document.getElementById('start-search').focus(); }
+};
+document.getElementById('start-search').oninput = (e)=> buildStartMenu(e.target.value);
+document.addEventListener('click', (e)=>{
+  const m = document.getElementById('start-menu');
+  if(m.classList.contains('open') && !m.contains(e.target) && e.target.id!=='start-btn') m.classList.remove('open');
+});
+
+/* =========================================================================
+   DESKTOP ICONS (Pulpit) + system shortcuts
+   ========================================================================= */
+let LAYOUT = safeParse(lsGet(LS_LAYOUT), null) || {};
+function saveLayout(){ lsSet(LS_LAYOUT, JSON.stringify(LAYOUT)); }
+
+function iconFor(node, name){
+  if(node.type==='folder') return node.trash ? '🗑️' : '📁';
+  const ext=(node.ext||'').toLowerCase();
+  if(['png','jpg','jpeg','gif','webp','svg'].includes(ext)) return '🖼️';
+  if(['mp3','wav','ogg'].includes(ext)) return '🎵';
+  if(['mp4','webm','mov'].includes(ext)) return '🎬';
+  if(ext==='py') return '🐍';
+  if(ext==='txt') return '📄';
+  return '📦';
+}
+
+function renderDesktopIcons(){
+  const layer = document.getElementById('icon-layer');
+  layer.innerHTML='';
+  const entries = listDir(['Pulpit']);
+  const cellW=94, cellH=100;
+  let autoIdx=0;
+  entries.forEach(({name,node})=>{
+    placeIcon(layer, 'file:'+name, iconFor(node,name), name, ()=>openFsNode(['Pulpit',name]), autoIdx++, cellW, cellH,
+      (x,y)=>openFileCtx(['Pulpit',name], node, x, y));
+  });
+  // system shortcuts
+  placeIcon(layer,'sys:komputer','💻','Ten komputer', ()=>window.NimbusApps.files.open([]), autoIdx++, cellW, cellH);
+  placeIcon(layer,'sys:kosz','🗑️','Kosz', ()=>window.NimbusApps.files.open(['Kosz']), autoIdx++, cellW, cellH);
+}
+function placeIcon(layer, key, icon, label, onOpen, autoIdx, cellW, cellH, onCtx){
+  const el=document.createElement('div'); el.className='d-icon';
+  const cols = Math.max(1, Math.floor((window.innerWidth-20)/cellW));
+  const pos = LAYOUT[key] || { x: (autoIdx%cols)*cellW+10, y: Math.floor(autoIdx/cols)*cellH+10 };
+  el.style.left=pos.x+'px'; el.style.top=pos.y+'px';
+  el.innerHTML = `<div class="ic">${icon}</div><div class="lb">${label}</div>`;
+  layer.appendChild(el);
+
+  let lastTap=0, moved=false, sx,sy,ox,oy,dragging=false;
+  function down(cx,cy){ sx=cx;sy=cy; ox=el.offsetLeft; oy=el.offsetTop; dragging=true; moved=false;
+    document.querySelectorAll('.d-icon.selected').forEach(x=>x.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+  function move(cx,cy){ if(!dragging) return; if(Math.abs(cx-sx)>3||Math.abs(cy-sy)>3) moved=true;
+    el.style.left=(ox+(cx-sx))+'px'; el.style.top=(oy+(cy-sy))+'px'; }
+  function up(){ if(!dragging) return; dragging=false;
+    if(moved){ LAYOUT[key]={x:el.offsetLeft,y:el.offsetTop}; saveLayout(); }
+    else {
+      const now=Date.now();
+      if(now-lastTap<450 || isMobile()){ onOpen(); }
+      lastTap=now;
+    }
+  }
+  el.addEventListener('mousedown', e=>{down(e.clientX,e.clientY); e.stopPropagation();});
+  window.addEventListener('mousemove', e=>move(e.clientX,e.clientY));
+  window.addEventListener('mouseup', up);
+  el.addEventListener('dblclick', onOpen);
+  el.addEventListener('touchstart', e=>{const t=e.touches[0]; down(t.clientX,t.clientY); e.stopPropagation();}, {passive:true});
+  window.addEventListener('touchmove', e=>{ if(dragging){const t=e.touches[0]; move(t.clientX,t.clientY);} }, {passive:true});
+  window.addEventListener('touchend', up);
+  el.addEventListener('contextmenu', e=>{ e.preventDefault(); e.stopPropagation(); if(onCtx) onCtx(e.clientX,e.clientY); });
+}
+
+function openFileCtx(pathArr, node, x, y){
+  showCtxMenu(x,y,[
+    {label:'Otwórz', action:()=>openFsNode(pathArr)},
+    {label:'Zmień nazwę', action:()=>{
+      const nn = prompt('Nowa nazwa:', pathArr[pathArr.length-1]);
+      if(nn){ renameNode(pathArr, nn); renderDesktopIcons(); }
+    }},
+    {label:'Usuń', action:()=>{ deleteNode(pathArr, true); renderDesktopIcons(); }},
+  ]);
+}
+
+function openFsNode(pathArr){
+  const node = getNode(pathArr);
+  if(!node) return;
+  if(node.type==='folder'){ window.NimbusApps.files.open(pathArr); return; }
+  const ext=(node.ext||'').toLowerCase();
+  if(ext==='txt') window.NimbusApps.editor.open(pathArr);
+  else if(ext==='py') window.NimbusApps.pyconsole.open(pathArr);
+  else if(['png','jpg','jpeg','gif','webp','svg'].includes(ext)) window.NimbusApps.photos.open(pathArr);
+  else if(['mp3','wav','ogg'].includes(ext)) window.NimbusApps.music.open(pathArr);
+  else if(['mp4','webm','mov'].includes(ext)) window.NimbusApps.video.open(pathArr);
+  else window.NimbusApps.editor.open(pathArr);
+}
+window.openFsNode = openFsNode;
+window.renderDesktopIcons = renderDesktopIcons;
+
+document.getElementById('desktop').addEventListener('contextmenu', e=>{
+  if(e.target.id!=='desktop' && e.target.id!=='icon-layer') return;
+  e.preventDefault();
+  showCtxMenu(e.clientX, e.clientY, [
+    {label:'📁 Nowy folder', action:()=>{ createFolder(['Pulpit'],'Nowy folder'); renderDesktopIcons(); }},
+    {label:'📄 Nowy plik tekstowy', action:()=>{ const n=createFile(['Pulpit'],'Nowy dokument.txt','txt',''); renderDesktopIcons(); }},
+    {sep:true},
+    {label:'🎨 Personalizacja', action:()=> window.NimbusApps.theme.open()},
+    {label:'🔄 Odśwież', action:renderDesktopIcons},
+  ]);
+});
+document.getElementById('desktop').addEventListener('mousedown', e=>{
+  if(e.target.id==='desktop'||e.target.id==='icon-layer') document.querySelectorAll('.d-icon.selected').forEach(x=>x.classList.remove('selected'));
+});
+
+window.addEventListener('resize', ()=>{
+  Object.values(windows).forEach(r=>{ if(isMobile()) r.el.classList.add('mobile-full'); else r.el.classList.remove('mobile-full'); });
+});
+
+window._NimbusInit = { renderDesktopIcons, applyTheme };
+})();
+</script>
+<script>
+/* =========================================================================
+   APLIKACJE — Menedżer plików, Edytor tekstu, Terminal, Kalkulator
+   ========================================================================= */
+(function(){
+"use strict";
+const { openWindow, closeWindow, focusWindow } = window.NimbusWM;
+const { getNode, listDir, createFile, createFolder, deleteNode, renameNode, moveNode, saveFS, uniqueName, pathToStr, getParentAndName } = window.NimbusFS;
+
+function iconForNode(node){
+  if(node.type==='folder') return node.trash ? '🗑️' : '📁';
+  const ext=(node.ext||'').toLowerCase();
+  if(['png','jpg','jpeg','gif','webp','svg'].includes(ext)) return '🖼️';
+  if(['mp3','wav','ogg'].includes(ext)) return '🎵';
+  if(['mp4','webm','mov'].includes(ext)) return '🎬';
+  if(ext==='py') return '🐍';
+  if(ext==='zip') return '🗜️';
+  if(ext==='txt') return '📄';
+  return '📦';
+}
+function guessMime(filename){
+  const ext=filename.split('.').pop().toLowerCase();
+  const map={png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',svg:'image/svg+xml',
+    mp3:'audio/mpeg',wav:'audio/wav',ogg:'audio/ogg', mp4:'video/mp4',webm:'video/webm',mov:'video/quicktime', txt:'text/plain', zip:'application/zip', py:'text/x-python'};
+  return map[ext]||'application/octet-stream';
+}
+
+/* --------------------------- ARCHIWA ZIP (pakowanie/rozpakowywanie) --------------------------- */
+function ensureFflate(onStatus){
+  if(window.fflate) return Promise.resolve(window.fflate);
+  if(window._fflatePromise) return window._fflatePromise;
+  onStatus && onStatus('⏳ Ładowanie narzędzia do archiwów ZIP…');
+  window._fflatePromise = new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js';
+    s.onload=()=> resolve(window.fflate);
+    s.onerror=()=> reject(new Error('Nie udało się pobrać narzędzia ZIP (sprawdź połączenie z internetem).'));
+    document.head.appendChild(s);
+  });
+  return window._fflatePromise;
+}
+function bytesToBase64(bytes){
+  let binary=''; const chunk=0x8000;
+  for(let i=0;i<bytes.length;i+=chunk){ binary+=String.fromCharCode.apply(null, bytes.subarray(i,i+chunk)); }
+  return btoa(binary);
+}
+function base64ToBytes(b64){
+  const binary=atob(b64); const bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+  return bytes;
+}
+function fileNodeToBytes(node){
+  if(node.content && node.content.startsWith('data:')){
+    const b64 = node.content.split(',')[1] || '';
+    return base64ToBytes(b64);
+  }
+  return new TextEncoder().encode(node.content||'');
+}
+function folderToZipObj(folderNode){
+  const obj={};
+  for(const [name,child] of Object.entries(folderNode.children||{})){
+    if(child.type==='folder') obj[name+'/'] = folderToZipObj(child);
+    else obj[name] = fileNodeToBytes(child);
+  }
+  return obj;
+}
+async function zipPathToFile(pathArr, onStatus){
+  const fflate = await ensureFflate(onStatus);
+  const node = getNode(pathArr);
+  if(!node) throw new Error('Nie znaleziono elementu do spakowania.');
+  const name = pathArr[pathArr.length-1];
+  const obj = node.type==='folder' ? folderToZipObj(node) : { [name]: fileNodeToBytes(node) };
+  const zipped = fflate.zipSync(obj, {level:6});
+  const b64 = bytesToBase64(zipped);
+  const parentPath = pathArr.slice(0,-1);
+  const zipName = uniqueName(getNode(parentPath), name+'.zip');
+  createFile(parentPath, zipName, 'zip', 'data:application/zip;base64,'+b64, 'application/zip');
+  return zipName;
+}
+async function unzipFileToFolder(pathArr, onStatus){
+  const fflate = await ensureFflate(onStatus);
+  const node = getNode(pathArr);
+  if(!node || node.type!=='file') throw new Error('Nie znaleziono pliku ZIP.');
+  const b64 = (node.content.split(',')[1]) || '';
+  const bytes = base64ToBytes(b64);
+  const entries = fflate.unzipSync(bytes);
+  const parentPath = pathArr.slice(0,-1);
+  const rawName = pathArr[pathArr.length-1];
+  const baseName = rawName.replace(/\.zip$/i,'');
+  const destName = uniqueName(getNode(parentPath), baseName);
+  const parentDir = getNode(parentPath);
+  parentDir.children[destName] = {type:'folder', children:{}};
+  const rootDirPath = [...parentPath, destName];
+  Object.keys(entries).forEach(entryPath=>{
+    if(entryPath.endsWith('/')) return;
+    const parts = entryPath.split('/').filter(Boolean);
+    const fileName = parts.pop();
+    let curPath = rootDirPath;
+    parts.forEach(p=>{
+      const curDir = getNode(curPath);
+      if(!curDir.children[p]) curDir.children[p] = {type:'folder', children:{}};
+      curPath = [...curPath, p];
+    });
+    const bytesEntry = entries[entryPath];
+    const isBinary = bytesEntry.includes(0);
+    const ext = fileName.includes('.') ? fileName.split('.').pop().toLowerCase() : '';
+    let content, mime;
+    if(isBinary){ mime = guessMime(fileName); content = 'data:'+mime+';base64,'+bytesToBase64(bytesEntry); }
+    else { content = new TextDecoder('utf-8').decode(bytesEntry); mime='text/plain'; }
+    const targetDir = getNode(curPath);
+    targetDir.children[fileName] = {type:'file', ext, content, mime, modified:Date.now()};
+  });
+  saveFS();
+  return destName;
+}
+window.NimbusZip = { zipPathToFile, unzipFileToFolder, ensureFflate };
+
+/* --------------------------- MENEDŻER PLIKÓW --------------------------- */
+registerApp('files','Menedżer plików','🗂️', function(startPath){
+  let path = startPath || [];
+  const rec = openWindow({app:'files', title:'Menedżer plików', icon:'🗂️', width:620, height:420, render(body, r){
+    body.innerHTML = `
+      <div class="fm-wrap">
+        <div class="fm-toolbar">
+          <button class="btn" data-a="up">⬆ W górę</button>
+          <button class="btn" data-a="new-folder">📁 Nowy folder</button>
+          <button class="btn" data-a="new-file">📄 Nowy plik</button>
+          <button class="btn" data-a="upload">⬆️ Wgraj plik</button>
+          <input type="file" id="fm-upload" style="display:none" multiple>
+          <div class="fm-path"></div>
+        </div>
+        <div class="fm-body"></div>
+      </div>`;
+    const pathEl = body.querySelector('.fm-path');
+    const gridEl = body.querySelector('.fm-body');
+    const uploadInput = body.querySelector('#fm-upload');
+
+    function refresh(){
+      pathEl.textContent = pathToStr(path)==='/'?'/ (Ten komputer)':pathToStr(path);
+      gridEl.innerHTML='';
+      const entries = listDir(path);
+      if(entries.length===0){ gridEl.innerHTML='<div class="empty-hint">Ten folder jest pusty. Kliknij prawym przyciskiem, aby dodać elementy.</div>'; }
+      entries.forEach(({name,node})=>{
+        const it = document.createElement('div'); it.className='fm-item'; it.draggable=true;
+        it.innerHTML = `<div class="ic">${iconForNode(node)}</div><div class="nm">${name}</div>`;
+        it.ondblclick = ()=> node.type==='folder' ? (path=[...path,name], refresh()) : window.openFsNode([...path,name]);
+        it.onclick = (e)=>{ e.stopPropagation(); gridEl.querySelectorAll('.selected').forEach(x=>x.classList.remove('selected')); it.classList.add('selected'); };
+        it.oncontextmenu = (e)=>{ e.preventDefault(); e.stopPropagation();
+          showCtxMenu(e.clientX,e.clientY,[
+            {label:'Otwórz', action:()=> node.type==='folder' ? (path=[...path,name], refresh()) : window.openFsNode([...path,name])},
+            {label:'Zmień nazwę', action:()=>{ const nn=prompt('Nowa nazwa:',name); if(nn && renameNode([...path,name],nn)) refresh(); }},
+            {label: path[0]==='Kosz' ? 'Usuń trwale':'Usuń (do kosza)', action:()=>{ deleteNode([...path,name], path[0]!=='Kosz'); refresh(); window.renderDesktopIcons(); }},
+            ...(node.type==='file' && name.toLowerCase().endsWith('.py') ? [{label:'▶ Uruchom (Python)', action:()=> window.NimbusApps.pyconsole.open([...path,name])}] : []),
+            ...(!(node.type==='file' && name.toLowerCase().endsWith('.zip')) ? [{label:'🗜️ Spakuj do ZIP', action: async ()=>{
+              try{ await window.NimbusZip.zipPathToFile([...path,name]); refresh(); window.renderDesktopIcons(); }
+              catch(err){ alert('Błąd pakowania: '+err.message); }
+            }}] : []),
+            ...(node.type==='file' && name.toLowerCase().endsWith('.zip') ? [{label:'📦 Rozpakuj tutaj', action: async ()=>{
+              try{ await window.NimbusZip.unzipFileToFolder([...path,name]); refresh(); window.renderDesktopIcons(); }
+              catch(err){ alert('Błąd rozpakowywania: '+err.message); }
+            }}] : []),
+            ...(node.type==='file' ? [{label:'Pobierz na dysk', action:()=> downloadFile(name,node)}] : []),
+          ]);
+        };
+        it.addEventListener('dragstart', e=>{ e.dataTransfer.setData('text/plain', JSON.stringify([...path,name])); });
+        if(node.type==='folder'){
+          it.addEventListener('dragover', e=>{ e.preventDefault(); it.classList.add('dragover'); });
+          it.addEventListener('dragleave', ()=> it.classList.remove('dragover'));
+          it.addEventListener('drop', e=>{ e.preventDefault(); it.classList.remove('dragover');
+            const src = JSON.parse(e.dataTransfer.getData('text/plain'));
+            if(moveNode(src,[...path,name])){ refresh(); window.renderDesktopIcons(); }
+          });
+        }
+        gridEl.appendChild(it);
+      });
+    }
+    gridEl.addEventListener('dragover', e=>e.preventDefault());
+    gridEl.addEventListener('drop', e=>{
+      e.preventDefault();
+      const txt = e.dataTransfer.getData('text/plain');
+      if(txt){ try{ const src=JSON.parse(txt); if(moveNode(src, path)){ refresh(); window.renderDesktopIcons(); } }catch(err){} }
+    });
+    gridEl.addEventListener('contextmenu', e=>{
+      if(e.target!==gridEl) return; e.preventDefault();
+      showCtxMenu(e.clientX,e.clientY,[
+        {label:'📁 Nowy folder', action:()=>{ createFolder(path,'Nowy folder'); refresh(); window.renderDesktopIcons(); }},
+        {label:'📄 Nowy plik tekstowy', action:()=>{ createFile(path,'Nowy dokument.txt','txt',''); refresh(); window.renderDesktopIcons(); }},
+      ]);
+    });
+    body.querySelector('[data-a=up]').onclick = ()=>{ if(path.length){ path=path.slice(0,-1); refresh(); } };
+    body.querySelector('[data-a=new-folder]').onclick = ()=>{ createFolder(path,'Nowy folder'); refresh(); window.renderDesktopIcons(); };
+    body.querySelector('[data-a=new-file]').onclick = ()=>{ createFile(path,'Nowy dokument.txt','txt',''); refresh(); window.renderDesktopIcons(); };
+    body.querySelector('[data-a=upload]').onclick = ()=> uploadInput.click();
+    uploadInput.onchange = ()=>{
+      Array.from(uploadInput.files).forEach(f=>{
+        const reader = new FileReader();
+        const isText = f.type.startsWith('text') || f.name.endsWith('.txt');
+        reader.onload = ()=>{
+          const ext = f.name.split('.').pop().toLowerCase();
+          createFile(path, f.name, ext, reader.result, f.type||guessMime(f.name));
+          refresh(); window.renderDesktopIcons();
+        };
+        if(isText) reader.readAsText(f); else reader.readAsDataURL(f);
+      });
+      uploadInput.value='';
+    };
+    refresh();
+    r._filesRefresh = refresh;
+  }});
+  return rec;
+});
+function downloadFile(name,node){
+  let href = node.content;
+  if(!href.startsWith('data:')) href = 'data:'+node.mime+';charset=utf-8,'+encodeURIComponent(href);
+  const a=document.createElement('a'); a.href=href; a.download=name; a.click();
+}
+
+/* --------------------------- EDYTOR TEKSTU --------------------------- */
+registerApp('editor','Notatnik','📝', function(pathArr){
+  const rec = openWindow({app:'editor', title: pathArr? pathArr[pathArr.length-1] : 'Notatnik', icon:'📝', width:520, height:420, render(body,r){
+    body.innerHTML = `
+      <div style="display:flex;flex-direction:column;height:100%;">
+        <div style="display:flex;gap:6px;padding:8px;border-bottom:1px solid var(--win-border);">
+          <button class="btn primary" data-a="save">💾 Zapisz</button>
+          <button class="btn" data-a="saveas">Zapisz jako…</button>
+          <span style="flex:1"></span>
+          <span id="ed-status" style="font-size:11px;color:var(--text-dim);align-self:center;"></span>
+        </div>
+        <textarea class="ta" style="flex:1;border:none;border-radius:0;padding:14px;"></textarea>
+      </div>`;
+    const ta = body.querySelector('textarea');
+    let curPath = pathArr ? pathArr.slice() : null;
+    if(curPath){ const n=getNode(curPath); ta.value = n? n.content : ''; }
+    function setStatus(t){ body.querySelector('#ed-status').textContent=t; }
+    function save(){
+      if(!curPath){
+        const name = prompt('Nazwa pliku:', 'Nowy dokument.txt'); if(!name) return;
+        createFile(['Dokumenty'], name, 'txt', ta.value);
+        curPath = ['Dokumenty', name];
+        r.el.querySelector('.ttl').textContent = name;
+      } else {
+        const n = getNode(curPath); if(n){ n.content = ta.value; n.modified=Date.now(); saveFS(); }
+      }
+      window.renderDesktopIcons();
+      setStatus('Zapisano '+new Date().toLocaleTimeString('pl-PL'));
+    }
+    body.querySelector('[data-a=save]').onclick = save;
+    body.querySelector('[data-a=saveas]').onclick = ()=>{
+      const name = prompt('Zapisz jako:', curPath?curPath[curPath.length-1]:'Nowy dokument.txt'); if(!name) return;
+      createFile(['Dokumenty'], name, 'txt', ta.value);
+      curPath=['Dokumenty',name]; r.el.querySelector('.ttl').textContent=name;
+      window.renderDesktopIcons(); setStatus('Zapisano jako '+name);
+    };
+    ta.addEventListener('keydown', e=>{ if((e.ctrlKey||e.metaKey)&&e.key==='s'){ e.preventDefault(); save(); } });
+  }});
+  return rec;
+});
+
+/* --------------------------- KALKULATOR --------------------------- */
+registerApp('calc','Kalkulator','🧮', function(){
+  const rec = openWindow({app:'calc', title:'Kalkulator', icon:'🧮', width:300, height:420, singleton:true, singletonKey:'main', render(body){
+    body.innerHTML = `<div class="calc">
+      <div class="calc-screen" id="calc-screen">0</div>
+      <div class="calc-grid">
+        <button class="calc-key op" data-k="C">C</button><button class="calc-key op" data-k="±">±</button><button class="calc-key op" data-k="%">%</button><button class="calc-key op" data-k="/">÷</button>
+        <button class="calc-key" data-k="7">7</button><button class="calc-key" data-k="8">8</button><button class="calc-key" data-k="9">9</button><button class="calc-key op" data-k="*">×</button>
+        <button class="calc-key" data-k="4">4</button><button class="calc-key" data-k="5">5</button><button class="calc-key" data-k="6">6</button><button class="calc-key op" data-k="-">−</button>
+        <button class="calc-key" data-k="1">1</button><button class="calc-key" data-k="2">2</button><button class="calc-key" data-k="3">3</button><button class="calc-key op" data-k="+">+</button>
+        <button class="calc-key" data-k="0" style="grid-column:span 2;">0</button><button class="calc-key" data-k=".">.</button><button class="calc-key eq" data-k="=">=</button>
+      </div></div>`;
+    let expr='';
+    const screen = body.querySelector('#calc-screen');
+    function render(){ screen.textContent = expr===''?'0':expr.replace(/\*/g,'×').replace(/\//g,'÷'); }
+    body.querySelectorAll('.calc-key').forEach(btn=>{
+      btn.onclick = ()=>{
+        const k = btn.dataset.k;
+        if(k==='C'){ expr=''; }
+        else if(k==='±'){ expr = expr.startsWith('-') ? expr.slice(1) : '-'+expr; }
+        else if(k==='%'){ try{ expr = String(Function('"use strict";return ('+expr+')/100')()); }catch(e){} }
+        else if(k==='='){ try{ expr = String(Function('"use strict";return ('+expr.replace(/×/g,'*')+')')()); }catch(e){ expr='Błąd'; } }
+        else { expr += k; }
+        render();
+      };
+    });
+    render();
+  }});
+  return rec;
+});
+
+/* --------------------------- TERMINAL --------------------------- */
+registerApp('terminal','Terminal','💻', function(){
+  const rec = openWindow({app:'terminal', title:'Terminal', icon:'💻', width:560, height:380, render(body){
+    body.innerHTML = `<div class="term"><div id="term-out"></div>
+      <div class="term-input-row"><span class="term-prompt" id="term-prompt-lbl">/&gt;</span> <input id="term-in" autocomplete="off"></div></div>`;
+    let cwd = [];
+    const out = body.querySelector('#term-out');
+    const inp = body.querySelector('#term-in');
+    const promptLbl = body.querySelector('#term-prompt-lbl');
+    function pr(txt){ const d=document.createElement('div'); d.className='term-line'; d.textContent=txt; out.appendChild(d); body.scrollTop=body.scrollHeight; }
+    function updatePrompt(){ promptLbl.textContent = pathToStr(cwd)+' >'; }
+    pr('Faller\'OS Terminal — wpisz "help" aby zobaczyć listę poleceń.');
+    updatePrompt();
+    const history=[]; let hIdx=-1;
+    inp.addEventListener('keydown', e=>{
+      if(e.key==='Enter'){
+        const line = inp.value; inp.value='';
+        pr(pathToStr(cwd)+' > '+line);
+        history.push(line); hIdx=history.length;
+        runCmd(line.trim());
+      } else if(e.key==='ArrowUp'){ if(hIdx>0){ hIdx--; inp.value=history[hIdx]||''; } }
+      else if(e.key==='ArrowDown'){ if(hIdx<history.length){ hIdx++; inp.value=history[hIdx]||''; } }
+    });
+    async function runCmd(line){
+      if(!line){ return; }
+      const [cmd, ...rest] = line.split(' ');
+      const arg = rest.join(' ');
+      switch(cmd){
+        case 'help': pr('Dostępne polecenia: help, ls, cd <folder>, cat <plik>, mkdir <nazwa>, touch <plik>, echo <tekst> > <plik>, rm <nazwa>, mv <src> <dst>, pwd, whoami, date, clear, open <app>, python [plik.py], pip install/list/uninstall <pakiet>, zip <folder/plik>, unzip <plik.zip>, theme <dark|light|contrast>, cowsay <tekst>'); break;
+        case 'ls': { const items=listDir(cwd); pr(items.length? items.map(i=>i.node.type==='folder'?i.name+'/':i.name).join('   ') : '(pusto)'); break; }
+        case 'cd': {
+          if(!arg || arg==='..'){ if(arg==='..') cwd=cwd.slice(0,-1); }
+          else { const n=getNode([...cwd,arg]); if(n&&n.type==='folder'){ cwd=[...cwd,arg]; } else pr('Brak folderu: '+arg); }
+          updatePrompt(); break;
+        }
+        case 'pwd': pr(pathToStr(cwd)); break;
+        case 'cat': { const n=getNode([...cwd,arg]); if(n&&n.type==='file') pr(n.content); else pr('Nie znaleziono pliku: '+arg); break; }
+        case 'mkdir': if(arg){ createFolder(cwd,arg); window.renderDesktopIcons(); pr('Utworzono folder '+arg);} break;
+        case 'touch': if(arg){ createFile(cwd,arg,arg.split('.').pop(),''); window.renderDesktopIcons(); pr('Utworzono plik '+arg);} break;
+        case 'rm': if(arg){ deleteNode([...cwd,arg], true); window.renderDesktopIcons(); pr('Usunięto '+arg);} break;
+        case 'mv': { const [a,b]=rest; if(a&&b){ if(moveNode([...cwd,a],[...cwd,b])) pr('Przeniesiono.'); else pr('Nie udało się.'); } break; }
+        case 'echo': {
+          const gtIdx = line.indexOf('>');
+          if(gtIdx>-1){ const txt=line.slice(5,gtIdx).trim(); const fname=line.slice(gtIdx+1).trim(); createFile(cwd,fname,fname.split('.').pop()||'txt',txt); window.renderDesktopIcons(); pr('Zapisano do '+fname); }
+          else pr(arg);
+          break;
+        }
+        case 'whoami': pr('użytkownik@FallerOS'); break;
+        case 'date': pr(new Date().toLocaleString('pl-PL')); break;
+        case 'clear': out.innerHTML=''; break;
+        case 'open': if(arg && window.NimbusApps[arg]) window.NimbusApps[arg].open(); else pr('Nieznana aplikacja: '+arg+' (spróbuj: files, editor, calc, music, video, photos, theme, pyconsole, snake, ttt, game2048, minesweeper)'); break;
+        case 'zip': {
+          if(!arg){ pr('Użycie: zip <plik_lub_folder>'); break; }
+          try{
+            const zn = await window.NimbusZip.zipPathToFile([...cwd, arg], (s)=>pr(s));
+            window.renderDesktopIcons();
+            pr('🗜️ Spakowano do: '+zn);
+          }catch(err){ pr('❌ '+err.message); }
+          break;
+        }
+        case 'unzip': {
+          if(!arg){ pr('Użycie: unzip <plik.zip>'); break; }
+          try{
+            const dn = await window.NimbusZip.unzipFileToFolder([...cwd, arg], (s)=>pr(s));
+            window.renderDesktopIcons();
+            pr('📦 Rozpakowano do folderu: '+dn);
+          }catch(err){ pr('❌ '+err.message); }
+          break;
+        }
+        case 'pip': {
+          const sub = rest[0]; const pkgArgs = rest.slice(1);
+          if(sub==='install' && pkgArgs.length){
+            for(const pkg of pkgArgs){
+              pr('📦 Instalowanie: '+pkg+'…');
+              const res = await window.NimbusPython.installPackage(pkg, (s)=>pr(s));
+              pr(res.ok ? '✅ Zainstalowano '+pkg : '❌ Nie udało się zainstalować '+pkg+': '+res.error);
+            }
+          } else if(sub==='list'){
+            const list = window.NimbusPython.listPackages();
+            pr(list.length ? 'Zainstalowane pakiety: '+list.join(', ') : 'Brak zainstalowanych pakietów.');
+          } else if(sub==='uninstall' && pkgArgs.length){
+            window.NimbusPython.removePackage(pkgArgs[0]);
+            pr('Usunięto z listy auto-instalacji: '+pkgArgs[0]+' (efekt po ponownym uruchomieniu Pythona)');
+          } else {
+            pr('Użycie: pip install <pakiet> | pip list | pip uninstall <pakiet>');
+          }
+          break;
+        }
+        case 'python': case 'py': {
+          if(arg){
+            const n = getNode([...cwd, arg]);
+            if(n && n.type==='file'){
+              pr('▶ Uruchamianie '+arg+'…');
+              const res = await window.NimbusPython.run(n.content, (s)=>pr(s));
+              if(res.output) pr(res.output.replace(/\n$/,''));
+              if(res.error) pr('❌ '+res.error);
+              if(!res.output && !res.error) pr('(brak wyjścia)');
+            } else pr('Nie znaleziono pliku: '+arg+' (użyj: python nazwa.py)');
+          } else {
+            pr('Otwieram Konsolę Python…');
+            window.NimbusApps.pyconsole.open();
+          }
+          break;
+        }
+        case 'theme': if(['dark','light','contrast'].includes(arg)){ window.NimbusSettings.SETTINGS.theme=arg; window.NimbusSettings.saveSettings(); window.NimbusSettings.applyTheme(); pr('Motyw zmieniony na '+arg);} else pr('Użyj: theme dark|light|contrast'); break;
+        case 'cowsay': pr(' '+'_'.repeat((arg||'Muu').length+2)+'\n< '+(arg||'Muu')+' >\n '+'-'.repeat((arg||'Muu').length+2)+'\n        \\   ^__^\n         \\  (oo)\\_______\n            (__)\\       )\\/\\\n                ||----w |\n                ||     ||'); break;
+        default: pr('Nieznane polecenie: '+cmd+' (wpisz help)');
+      }
+    }
+    inp.focus();
+    body.addEventListener('mousedown', ()=>inp.focus());
+  }});
+  return rec;
+});
+
+})();
+</script>
+<script>
+/* =========================================================================
+   MULTIMEDIA — Muzyka, Wideo, Zdjęcia, Personalizacja
+   ========================================================================= */
+(function(){
+"use strict";
+const { openWindow } = window.NimbusWM;
+const { getNode, listDir, createFile } = window.NimbusFS;
+
+function isExt(name, list){ return list.includes(name.split('.').pop().toLowerCase()); }
+
+/* --------------------------- MUZYKA --------------------------- */
+registerApp('music','Odtwarzacz muzyki','🎵', function(openPath){
+  const rec = openWindow({app:'music', title:'Odtwarzacz muzyki', icon:'🎵', width:400, height:460, singleton:true, singletonKey:'main', render(body){
+    body.innerHTML = `
+      <div style="display:flex;flex-direction:column;height:100%;">
+        <div style="padding:10px;border-bottom:1px solid var(--win-border);display:flex;gap:6px;">
+          <button class="btn" id="mu-upload-btn">⬆️ Wgraj MP3</button>
+          <input type="file" id="mu-upload" accept="audio/*" multiple style="display:none">
+        </div>
+        <div id="mu-list" style="flex:1;overflow:auto;padding:8px;"></div>
+        <div style="padding:12px;border-top:1px solid var(--win-border);">
+          <div id="mu-now" style="font-size:12.5px;color:var(--text-dim);margin-bottom:6px;">Nic nie jest odtwarzane</div>
+          <audio id="mu-audio" style="width:100%"></audio>
+        </div>
+      </div>`;
+    const listEl = body.querySelector('#mu-list');
+    const audio = body.querySelector('#mu-audio');
+    const nowEl = body.querySelector('#mu-now');
+    body.querySelector('#mu-upload-btn').onclick = ()=> body.querySelector('#mu-upload').click();
+    body.querySelector('#mu-upload').onchange = (e)=>{
+      Array.from(e.target.files).forEach(f=>{
+        const rd = new FileReader();
+        rd.onload = ()=>{ createFile(['Muzyka'], f.name, f.name.split('.').pop(), rd.result, f.type); refresh(); window.renderDesktopIcons(); };
+        rd.readAsDataURL(f);
+      });
+    };
+    function play(name, node){
+      audio.src = node.content; audio.play();
+      nowEl.textContent = '▶ '+name;
+    }
+    function refresh(){
+      listEl.innerHTML='';
+      const items = listDir(['Muzyka']).filter(i=>i.node.type==='file' && isExt(i.name,['mp3','wav','ogg']));
+      if(!items.length){ listEl.innerHTML='<div class="empty-hint">Brak utworów. Wgraj plik MP3, aby rozpocząć.</div>'; return; }
+      items.forEach(({name,node})=>{
+        const row = document.createElement('div');
+        row.style.cssText='display:flex;align-items:center;gap:8px;padding:9px 8px;border-radius:8px;cursor:pointer;';
+        row.onmouseenter=()=>row.style.background='rgba(255,255,255,.08)';
+        row.onmouseleave=()=>row.style.background='';
+        row.innerHTML = `<span>🎵</span><span style="flex:1;font-size:13px;">${name}</span>`;
+        row.onclick = ()=> play(name,node);
+        listEl.appendChild(row);
+      });
+    }
+    refresh();
+    if(openPath){ const n=getNode(openPath); if(n) play(openPath[openPath.length-1], n); }
+  }});
+  return rec;
+});
+
+/* --------------------------- WIDEO --------------------------- */
+registerApp('video','Odtwarzacz wideo','🎬', function(openPath){
+  const rec = openWindow({app:'video', title:'Odtwarzacz wideo', icon:'🎬', width:560, height:420, render(body){
+    body.innerHTML = `
+      <div style="display:flex;flex-direction:column;height:100%;background:#000;">
+        <div style="padding:8px;background:var(--win-header);display:flex;gap:6px;">
+          <button class="btn" id="vi-upload-btn">⬆️ Wgraj wideo</button>
+          <input type="file" id="vi-upload" accept="video/*" style="display:none">
+          <select id="vi-select" class="input" style="max-width:220px;"></select>
+        </div>
+        <video id="vi-player" style="flex:1;width:100%;background:#000;" controls></video>
+      </div>`;
+    const sel = body.querySelector('#vi-select');
+    const player = body.querySelector('#vi-player');
+    body.querySelector('#vi-upload-btn').onclick=()=>body.querySelector('#vi-upload').click();
+    body.querySelector('#vi-upload').onchange=(e)=>{
+      const f=e.target.files[0]; if(!f) return;
+      const rd = new FileReader();
+      rd.onload=()=>{ createFile(['Wideo'], f.name, f.name.split('.').pop(), rd.result, f.type); refresh(); window.renderDesktopIcons(); refresh(f.name); };
+      rd.readAsDataURL(f);
+    };
+    function refresh(selectName){
+      sel.innerHTML='';
+      const items = listDir(['Wideo']).filter(i=>i.node.type==='file' && isExt(i.name,['mp4','webm','mov']));
+      if(!items.length){ sel.innerHTML='<option>Brak plików wideo</option>'; player.removeAttribute('src'); return; }
+      items.forEach(({name})=>{ const o=document.createElement('option'); o.value=name; o.textContent=name; sel.appendChild(o); });
+      const target = selectName || (openPath && openPath[openPath.length-1]) || items[0].name;
+      sel.value = target;
+      const n = getNode(['Wideo', sel.value]);
+      if(n) player.src = n.content;
+    }
+    sel.onchange = ()=>{ const n=getNode(['Wideo', sel.value]); if(n) player.src=n.content; };
+    refresh();
+  }});
+  return rec;
+});
+
+/* --------------------------- PRZEGLĄDARKA ZDJĘĆ --------------------------- */
+registerApp('photos','Przeglądarka zdjęć','🖼️', function(openPath){
+  const rec = openWindow({app:'photos', title:'Przeglądarka zdjęć', icon:'🖼️', width:560, height:440, render(body){
+    body.innerHTML = `
+      <div style="display:flex;flex-direction:column;height:100%;">
+        <div style="padding:8px;border-bottom:1px solid var(--win-border);display:flex;gap:6px;">
+          <button class="btn" id="ph-upload-btn">⬆️ Wgraj zdjęcia</button>
+          <input type="file" id="ph-upload" accept="image/*" multiple style="display:none">
+        </div>
+        <div class="gallery-grid" id="ph-grid" style="flex:1;overflow:auto;"></div>
+      </div>`;
+    const grid = body.querySelector('#ph-grid');
+    body.querySelector('#ph-upload-btn').onclick=()=>body.querySelector('#ph-upload').click();
+    body.querySelector('#ph-upload').onchange=(e)=>{
+      Array.from(e.target.files).forEach(f=>{
+        const rd = new FileReader();
+        rd.onload=()=>{ createFile(['Obrazy'], f.name, f.name.split('.').pop(), rd.result, f.type); refresh(); window.renderDesktopIcons(); };
+        rd.readAsDataURL(f);
+      });
+    };
+    let names=[];
+    function refresh(){
+      grid.innerHTML='';
+      const items = listDir(['Obrazy']).filter(i=>i.node.type==='file' && isExt(i.name,['png','jpg','jpeg','gif','webp','svg']));
+      names = items.map(i=>i.name);
+      if(!items.length){ grid.innerHTML='<div class="empty-hint">Brak zdjęć. Wgraj obrazy, aby je zobaczyć.</div>'; return; }
+      items.forEach(({name,node})=>{
+        const img = document.createElement('img'); img.src = node.content; img.title=name;
+        img.onclick = ()=> openViewer(name);
+        grid.appendChild(img);
+      });
+    }
+    function openViewer(name){
+      let idx = names.indexOf(name);
+      const v = document.createElement('div'); v.className='viewer';
+      body.appendChild(v);
+      function render(){
+        const n = getNode(['Obrazy', names[idx]]);
+        v.innerHTML = `<button class="win-btn nav" style="left:10px;" id="ph-prev">‹</button>
+          <img src="${n.content}">
+          <button class="win-btn nav" style="right:10px;" id="ph-next">›</button>
+          <div class="vbar"><button class="win-btn" id="ph-close" style="background:rgba(255,255,255,.15);color:#fff;">✕</button></div>
+          <div style="position:absolute;bottom:10px;color:#fff;font-size:12px;">${names[idx]}</div>`;
+        v.querySelector('#ph-prev').onclick=()=>{ idx=(idx-1+names.length)%names.length; render(); };
+        v.querySelector('#ph-next').onclick=()=>{ idx=(idx+1)%names.length; render(); };
+        v.querySelector('#ph-close').onclick=()=> v.remove();
+      }
+      render();
+    }
+    refresh();
+    if(openPath){ setTimeout(()=>openViewer(openPath[openPath.length-1]), 50); }
+  }});
+  return rec;
+});
+
+/* --------------------------- PERSONALIZACJA / MOTYWY --------------------------- */
+registerApp('theme','Personalizacja','🎨', function(){
+  const S = window.NimbusSettings;
+  const rec = openWindow({app:'theme', title:'Personalizacja', icon:'🎨', width:420, height:460, singleton:true, singletonKey:'main', render(body){
+    body.innerHTML = `<div class="app-pad">
+      <h3 style="margin-top:0;">Motyw kolorystyczny</h3>
+      <div style="display:flex;gap:8px;margin-bottom:20px;">
+        <button class="btn" data-th="dark">🌙 Ciemny</button>
+        <button class="btn" data-th="light">☀️ Jasny</button>
+        <button class="btn" data-th="contrast">⚡ Wysoki kontrast</button>
+      </div>
+      <h3>Tapeta</h3>
+      <div class="theme-swatches" id="wp-swatches"></div>
+      <div style="margin-top:14px;">
+        <button class="btn" id="wp-upload-btn">⬆️ Wgraj własną tapetę</button>
+        <input type="file" id="wp-upload" accept="image/*" style="display:none">
+      </div>
+      <h3>Rozmiar czcionki systemu</h3>
+      <input type="range" id="font-scale" min="0.85" max="1.3" step="0.05" style="width:100%;">
+
+      <h3>🔒 Bezpieczeństwo</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <button class="btn" id="sec-change">Zmień hasło</button>
+        <button class="btn" id="sec-toggle"></button>
+        <button class="btn" id="sec-lock">Zablokuj teraz</button>
+      </div>
+      <div id="sec-status" style="font-size:11.5px;color:var(--text-dim);"></div>
+    </div>`;
+    body.querySelectorAll('[data-th]').forEach(b=>{
+      b.onclick = ()=>{ S.SETTINGS.theme=b.dataset.th; S.saveSettings(); S.applyTheme(); };
+    });
+    const sw = body.querySelector('#wp-swatches');
+    Object.entries(S.WALLPAPERS).forEach(([key,grad])=>{
+      const d = document.createElement('div'); d.className='swatch'+(S.SETTINGS.wallpaperPreset===key && !S.SETTINGS.customWallpaper?' active':'');
+      d.style.background = grad; d.title=key;
+      d.onclick = ()=>{ S.SETTINGS.wallpaperPreset=key; S.SETTINGS.customWallpaper=null; S.saveSettings(); S.applyTheme();
+        sw.querySelectorAll('.swatch').forEach(x=>x.classList.remove('active')); d.classList.add('active'); };
+      sw.appendChild(d);
+    });
+    body.querySelector('#wp-upload-btn').onclick=()=>body.querySelector('#wp-upload').click();
+    body.querySelector('#wp-upload').onchange=(e)=>{
+      const f=e.target.files[0]; if(!f) return;
+      const rd=new FileReader();
+      rd.onload=()=>{ S.SETTINGS.customWallpaper=rd.result; S.saveSettings(); S.applyTheme(); };
+      rd.readAsDataURL(f);
+    };
+    const fr = body.querySelector('#font-scale');
+    fr.value = S.SETTINGS.fontScale;
+    fr.oninput = ()=>{ S.SETTINGS.fontScale=parseFloat(fr.value); S.saveSettings(); S.applyTheme(); };
+
+    const secStatus = body.querySelector('#sec-status');
+    const toggleBtn = body.querySelector('#sec-toggle');
+    function refreshSec(){
+      const on = window.NimbusAuth.isConfigured();
+      toggleBtn.textContent = on ? 'Wyłącz logowanie hasłem' : 'Włącz logowanie hasłem';
+      secStatus.textContent = on ? 'Logowanie hasłem jest włączone.' : 'Logowanie hasłem jest wyłączone — system uruchomi się bez pytania o hasło.';
+    }
+    body.querySelector('#sec-change').onclick = async ()=>{
+      const configured = window.NimbusAuth.isConfigured();
+      const oldP = configured ? (prompt('Podaj obecne hasło:')||'') : '';
+      if(configured && oldP==='') return;
+      const newP = prompt('Podaj nowe hasło (min. 4 znaki):'); if(!newP) return;
+      const res = await window.NimbusAuth.changePassword(oldP, newP);
+      secStatus.textContent = res.ok ? '✅ Hasło zostało zmienione.' : '❌ '+res.error;
+      refreshSec();
+    };
+    toggleBtn.onclick = async ()=>{
+      if(window.NimbusAuth.isConfigured()){
+        if(confirm('Wyłączyć wymóg logowania hasłem? System będzie uruchamiał się bez ekranu logowania.')){
+          window.NimbusAuth.disable(); refreshSec();
+        }
+      } else {
+        const p1 = prompt('Ustaw nowe hasło (min. 4 znaki):'); if(!p1) return;
+        const res = await window.NimbusAuth.changePassword('', p1);
+        secStatus.textContent = res.ok ? '✅ Włączono logowanie hasłem.' : '❌ '+res.error;
+        refreshSec();
+      }
+    };
+    body.querySelector('#sec-lock').onclick = ()=>{ window.NimbusAuth.lock(); };
+    refreshSec();
+  }});
+  return rec;
+});
+
+})();
+</script>
+<script>
+/* =========================================================================
+   GRY — Kółko i krzyżyk, 2048, Saper, Wąż
+   ========================================================================= */
+(function(){
+"use strict";
+const { openWindow } = window.NimbusWM;
+
+/* ---------------- Kółko i krzyżyk (vs prosty AI) ---------------- */
+registerApp('ttt','Kółko i krzyżyk','⭕', function(){
+  const rec = openWindow({app:'ttt', title:'Kółko i krzyżyk', icon:'⭕', width:320, height:400, render(body){
+    body.innerHTML = `<div class="game-wrap">
+      <div id="ttt-status" style="font-weight:600;">Twój ruch (X)</div>
+      <div class="ttt-grid" id="ttt-grid"></div>
+      <button class="btn primary" id="ttt-reset">Nowa gra</button>
+    </div>`;
+    const grid = body.querySelector('#ttt-grid');
+    const status = body.querySelector('#ttt-status');
+    let board, over;
+    function init(){ board=Array(9).fill(''); over=false; render(); status.textContent='Twój ruch (X)'; }
+    function render(){
+      grid.innerHTML='';
+      board.forEach((v,i)=>{
+        const c=document.createElement('div'); c.className='ttt-cell'; c.textContent=v;
+        c.onclick=()=>move(i);
+        grid.appendChild(c);
+      });
+    }
+    function winner(b){
+      const lines=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+      for(const [a,b1,c] of lines) if(b[a]&&b[a]===b[b1]&&b[a]===b[c]) return b[a];
+      return b.every(x=>x) ? 'draw' : null;
+    }
+    function move(i){
+      if(over || board[i]) return;
+      board[i]='X'; render();
+      let w = winner(board); if(w){ finish(w); return; }
+      setTimeout(()=>{
+        const empty = board.map((v,i)=>v?null:i).filter(v=>v!==null);
+        const pick = empty[Math.floor(Math.random()*empty.length)];
+        if(pick!=null) board[pick]='O';
+        render();
+        w = winner(board); if(w) finish(w);
+      }, 300);
+    }
+    function finish(w){
+      over=true;
+      status.textContent = w==='draw' ? 'Remis!' : (w==='X' ? 'Wygrałeś! 🎉' : 'Wygrał komputer.');
+    }
+    body.querySelector('#ttt-reset').onclick=init;
+    init();
+  }});
+  return rec;
+});
+
+/* ---------------- 2048 ---------------- */
+registerApp('game2048','2048','🔢', function(){
+  const rec = openWindow({app:'game2048', title:'2048', icon:'🔢', width:340, height:440, render(body){
+    body.innerHTML = `<div class="game-wrap">
+      <div style="display:flex;gap:10px;align-items:center;"><b id="g48-score">Wynik: 0</b><button class="btn" id="g48-reset">Restart</button></div>
+      <div class="g2048-grid" id="g48-grid"></div>
+      <div class="empty-hint">Sterowanie: strzałki (na komputerze) lub przeciąganie palcem (na telefonie)</div>
+    </div>`;
+    const gridEl = body.querySelector('#g48-grid');
+    const scoreEl = body.querySelector('#g48-score');
+    let grid, score;
+    const colors={2:'#3b3f63',4:'#454a77',8:'#6C63FF',16:'#7d75ff',32:'#00C2A8',64:'#00e0c0',128:'#ffb020',256:'#ff9500',512:'#ff7a00',1024:'#ff5c5c',2048:'#ffd700'};
+    function init(){ grid=Array(16).fill(0); score=0; addTile(); addTile(); render(); }
+    function addTile(){ const empty=grid.map((v,i)=>v?null:i).filter(v=>v!==null); if(!empty.length) return;
+      grid[empty[Math.floor(Math.random()*empty.length)]] = Math.random()<0.9?2:4; }
+    function render(){
+      gridEl.innerHTML='';
+      grid.forEach(v=>{ const c=document.createElement('div'); c.className='g2048-cell';
+        if(v){ c.textContent=v; c.style.background=colors[v]||'#ffd700'; c.style.color = v<=4?'var(--text)':'#fff'; }
+        gridEl.appendChild(c); });
+      scoreEl.textContent='Wynik: '+score;
+    }
+    function slide(row){
+      let arr=row.filter(v=>v);
+      for(let i=0;i<arr.length-1;i++){ if(arr[i]===arr[i+1]){ arr[i]*=2; score+=arr[i]; arr.splice(i+1,1); } }
+      while(arr.length<4) arr.push(0);
+      return arr;
+    }
+    function move(dir){
+      let moved=false;
+      const before = JSON.stringify(grid);
+      let rows=[];
+      for(let i=0;i<4;i++) rows.push(grid.slice(i*4,i*4+4));
+      if(dir==='left'){ rows=rows.map(r=>slide(r)); }
+      if(dir==='right'){ rows=rows.map(r=>slide(r.slice().reverse()).reverse()); }
+      if(dir==='up'){ let cols=[0,1,2,3].map(c=>[rows[0][c],rows[1][c],rows[2][c],rows[3][c]]);
+        cols=cols.map(c=>slide(c)); for(let r=0;r<4;r++) for(let c=0;c<4;c++) rows[r][c]=cols[c][r]; }
+      if(dir==='down'){ let cols=[0,1,2,3].map(c=>[rows[0][c],rows[1][c],rows[2][c],rows[3][c]]);
+        cols=cols.map(c=>slide(c.slice().reverse()).reverse()); for(let r=0;r<4;r++) for(let c=0;c<4;c++) rows[r][c]=cols[c][r]; }
+      grid = rows.flat();
+      moved = JSON.stringify(grid)!==before;
+      if(moved){ addTile(); render(); }
+    }
+    document.addEventListener('keydown', function handler(e){
+      if(!document.body.contains(body)) { document.removeEventListener('keydown',handler); return; }
+      const map={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'};
+      if(map[e.key]){ e.preventDefault(); move(map[e.key]); }
+    });
+    let tsx,tsy;
+    gridEl.addEventListener('touchstart', e=>{ const t=e.touches[0]; tsx=t.clientX; tsy=t.clientY; }, {passive:true});
+    gridEl.addEventListener('touchend', e=>{ const t=e.changedTouches[0]; const dx=t.clientX-tsx, dy=t.clientY-tsy;
+      if(Math.abs(dx)>Math.abs(dy)){ move(dx>30?'right':dx<-30?'left':''); } else { move(dy>30?'down':dy<-30?'up':''); } }, {passive:true});
+    body.querySelector('#g48-reset').onclick = init;
+    init();
+  }});
+  return rec;
+});
+
+/* ---------------- Saper ---------------- */
+registerApp('minesweeper','Saper','💣', function(){
+  const rec = openWindow({app:'minesweeper', title:'Saper', icon:'💣', width:340, height:430, render(body){
+    const SIZE=10, MINES=14;
+    body.innerHTML = `<div class="game-wrap">
+      <div style="display:flex;gap:10px;"><b id="ms-status">Znajdź miny!</b><button class="btn" id="ms-reset">Restart</button></div>
+      <div class="mine-grid" id="ms-grid" style="grid-template-columns:repeat(${SIZE},26px);"></div>
+    </div>`;
+    const gridEl = body.querySelector('#ms-grid');
+    const statusEl = body.querySelector('#ms-status');
+    let cells, over;
+    function init(){
+      over=false; statusEl.textContent='Znajdź miny!';
+      cells = Array(SIZE*SIZE).fill(0).map(()=>({mine:false,open:false,flag:false,n:0}));
+      let placed=0;
+      while(placed<MINES){ const i=Math.floor(Math.random()*cells.length); if(!cells[i].mine){ cells[i].mine=true; placed++; } }
+      for(let i=0;i<cells.length;i++){
+        if(cells[i].mine) continue;
+        const x=i%SIZE, y=Math.floor(i/SIZE); let n=0;
+        for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+          const nx=x+dx, ny=y+dy; if(nx<0||ny<0||nx>=SIZE||ny>=SIZE) continue;
+          if(cells[ny*SIZE+nx].mine) n++;
+        }
+        cells[i].n=n;
+      }
+      render();
+    }
+    function openCell(i){
+      if(over||cells[i].open||cells[i].flag) return;
+      cells[i].open=true;
+      if(cells[i].mine){ over=true; statusEl.textContent='💥 Trafiłeś na minę!'; cells.forEach(c=>{if(c.mine)c.open=true;}); render(); return; }
+      if(cells[i].n===0){
+        const x=i%SIZE,y=Math.floor(i/SIZE);
+        for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+          const nx=x+dx, ny=y+dy; if(nx<0||ny<0||nx>=SIZE||ny>=SIZE) continue;
+          const j=ny*SIZE+nx; if(!cells[j].open) openCell(j);
+        }
+      }
+      checkWin(); render();
+    }
+    function checkWin(){
+      if(cells.every(c=>c.mine || c.open)){ over=true; statusEl.textContent='🎉 Wygrałeś!'; }
+    }
+    function render(){
+      gridEl.innerHTML='';
+      const numColors=['','#7ea6ff','#7edb8f','#ff9494','#c39bff','#ffd27e','#7edede','#e0e0e0','#bbbbbb'];
+      cells.forEach((c,i)=>{
+        const d=document.createElement('div'); d.className='mine-cell'+(c.open?' open':'')+(c.open&&c.mine?' mine':'');
+        if(c.open && !c.mine && c.n>0){ d.textContent=c.n; d.style.color=numColors[c.n]; }
+        if(c.open && c.mine) d.textContent='💣';
+        if(!c.open && c.flag) d.textContent='🚩';
+        d.onclick=()=>openCell(i);
+        d.oncontextmenu=(e)=>{ e.preventDefault(); if(!c.open){ c.flag=!c.flag; render(); } };
+        gridEl.appendChild(d);
+      });
+    }
+    body.querySelector('#ms-reset').onclick=init;
+    init();
+  }});
+  return rec;
+});
+
+/* ---------------- Wąż (Snake) ---------------- */
+registerApp('snake','Wąż','🐍', function(){
+  const rec = openWindow({app:'snake', title:'Wąż', icon:'🐍', width:340, height:430, render(body){
+    body.innerHTML = `<div class="game-wrap">
+      <b id="sn-score">Wynik: 0</b>
+      <canvas id="sn-canvas" width="280" height="280" style="background:rgba(255,255,255,.05);border-radius:8px;"></canvas>
+      <div class="empty-hint">Strzałki / WASD lub przyciski poniżej</div>
+      <div style="display:grid;grid-template-columns:repeat(3,40px);gap:4px;">
+        <span></span><button class="btn" data-d="up">↑</button><span></span>
+        <button class="btn" data-d="left">←</button><button class="btn" id="sn-reset">⟳</button><button class="btn" data-d="right">→</button>
+        <span></span><button class="btn" data-d="down">↓</button><span></span>
+      </div>
+    </div>`;
+    const cv = body.querySelector('#sn-canvas'); const ctx=cv.getContext('2d');
+    const scoreEl = body.querySelector('#sn-score');
+    const cell=14, cols=20, rows=20;
+    let snake, dir, nextDir, food, score, timer, over;
+    function init(){
+      snake=[{x:10,y:10},{x:9,y:10},{x:8,y:10}]; dir={x:1,y:0}; nextDir=dir; score=0; over=false;
+      placeFood(); scoreEl.textContent='Wynik: 0';
+      clearInterval(timer); timer=setInterval(tick,130);
+      draw();
+    }
+    function placeFood(){ food={x:Math.floor(Math.random()*cols), y:Math.floor(Math.random()*rows)}; }
+    function tick(){
+      if(over) return;
+      dir=nextDir;
+      const head={x:snake[0].x+dir.x, y:snake[0].y+dir.y};
+      if(head.x<0||head.y<0||head.x>=cols||head.y>=rows||snake.some(s=>s.x===head.x&&s.y===head.y)){
+        over=true; clearInterval(timer); scoreEl.textContent='Koniec gry — wynik: '+score; return;
+      }
+      snake.unshift(head);
+      if(head.x===food.x && head.y===food.y){ score+=10; scoreEl.textContent='Wynik: '+score; placeFood(); }
+      else snake.pop();
+      draw();
+    }
+    function draw(){
+      ctx.clearRect(0,0,cv.width,cv.height);
+      ctx.fillStyle='#00C2A8'; ctx.fillRect(food.x*cell,food.y*cell,cell-2,cell-2);
+      ctx.fillStyle='#6C63FF';
+      snake.forEach((s,i)=>{ ctx.globalAlpha = i===0?1:0.75; ctx.fillRect(s.x*cell,s.y*cell,cell-2,cell-2); });
+      ctx.globalAlpha=1;
+    }
+    function setDir(x,y){ if(dir.x===-x&&dir.y===-y) return; nextDir={x,y}; }
+    document.addEventListener('keydown', function handler(e){
+      if(!document.body.contains(body)) { document.removeEventListener('keydown',handler); return; }
+      const map={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]};
+      if(map[e.key]){ e.preventDefault(); setDir(map[e.key][0],map[e.key][1]); }
+    });
+    body.querySelectorAll('[data-d]').forEach(b=>{
+      const m={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]}[b.dataset.d];
+      b.onclick=()=>setDir(m[0],m[1]);
+    });
+    body.querySelector('#sn-reset').onclick=init;
+    init();
+  }});
+  return rec;
+});
+
+})();
+</script>
+<script>
+/* =========================================================================
+   ASYSTENT AI — sterowanie systemem, tłumaczenie, czytanie na głos
+   Uwaga: to lokalny asystent oparty na regułach (bez modelu językowego),
+   ponieważ ten plik działa całkowicie autonomicznie w przeglądarce, bez
+   klucza API. Tłumaczenie korzysta z darmowego publicznego API MyMemory
+   (wymaga połączenia z internetem), a czytanie na głos — z wbudowanego
+   w przeglądarkę Web Speech API (działa offline).
+   ========================================================================= */
+(function(){
+"use strict";
+const log = document.getElementById('ai-log');
+const S = window.NimbusSettings;
+
+const APP_ALIASES = {
+  'terminal':'terminal','konsola':'terminal','cmd':'terminal',
+  'notatnik':'editor','edytor':'editor','edytor tekstu':'editor',
+  'menedżer plików':'files','pliki':'files','eksplorator':'files','folder':'files',
+  'kalkulator':'calc','liczydło':'calc',
+  'muzyk':'music','odtwarzacz muzyki':'music','muzyka':'music','piosenk':'music',
+  'wideo':'video','film':'video','odtwarzacz wideo':'video',
+  'zdjęci':'photos','galeria':'photos','fotograf':'photos','obraz':'photos',
+  'personalizacj':'theme','motyw':'theme','wygląd':'theme','tapet':'theme',
+  'kółko i krzyżyk':'ttt','kolko i krzyzyk':'ttt','tic tac toe':'ttt',
+  '2048':'game2048',
+  'saper':'minesweeper','miny':'minesweeper',
+  'wąż':'snake','waz':'snake','snake':'snake',
+  'python':'pyconsole','konsola python':'pyconsole','kod':'pyconsole','skrypt':'pyconsole',
+};
+function findApp(text){
+  text = text.toLowerCase();
+  for(const key in APP_ALIASES){ if(text.includes(key)) return APP_ALIASES[key]; }
+  for(const id in window.NimbusApps){ if(text.includes(window.NimbusApps[id].name.toLowerCase())) return id; }
+  return null;
+}
+
+function addMsg(text, who){
+  const d = document.createElement('div'); d.className='ai-msg '+(who||'bot');
+  d.innerText = text;
+  log.appendChild(d); log.scrollTop = log.scrollHeight;
+  return d;
+}
+addMsg('Cześć! Jestem FallerAI 🤖. Mogę np.:\n• „otwórz kalkulator”\n• „zmień motyw na jasny”\n• „ustaw tapetę ocean”\n• „przetłumacz dzień dobry na angielski”\n• „przeczytaj na głos: witaj w Faller\'OS”', 'bot');
+
+async function translateText(text, targetLangHint){
+  const langMap = {
+    'angielski':'en','english':'en','niemiecki':'de','francuski':'fr','hiszpański':'es','hiszpanski':'es',
+    'włoski':'it','wloski':'it','rosyjski':'ru','ukraiński':'uk','ukrainski':'uk','polski':'pl','portugalski':'pt',
+    'chiński':'zh','chinski':'zh','japoński':'ja','japonski':'ja',
+  };
+  let target = 'en';
+  for(const k in langMap){ if((targetLangHint||'').toLowerCase().includes(k)){ target=langMap[k]; break; } }
+  try{
+    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=pl|${target}`);
+    const data = await res.json();
+    return data && data.responseData ? data.responseData.translatedText : null;
+  }catch(e){ return null; }
+}
+
+function speak(text){
+  if(!('speechSynthesis' in window)){ addMsg('Przepraszam, ta przeglądarka nie obsługuje syntezatora mowy.', 'bot'); return; }
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang='pl-PL';
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+
+async function handleCommand(raw){
+  const text = raw.trim();
+  const low = text.toLowerCase();
+
+  // otwieranie aplikacji
+  if(/^(otwórz|otworz|uruchom|włącz|wlacz)\b/.test(low)){
+    const appId = findApp(low);
+    if(appId){ window.NimbusApps[appId].open(); addMsg('Otwieram: '+window.NimbusApps[appId].name+' ✅','bot'); }
+    else addMsg('Nie rozpoznaję takiej aplikacji. Dostępne: '+Object.values(window.NimbusApps).map(a=>a.name).join(', '), 'bot');
+    return;
+  }
+  // motyw
+  if(low.includes('motyw') || low.includes('tryb ciemny') || low.includes('tryb jasny')){
+    let th=null;
+    if(low.includes('jasn')) th='light'; else if(low.includes('ciemn')) th='dark'; else if(low.includes('kontrast')) th='contrast';
+    if(th){ S.SETTINGS.theme=th; S.saveSettings(); S.applyTheme(); addMsg('Zmieniono motyw na: '+th+' ✅','bot'); return; }
+  }
+  // tapeta
+  if(low.includes('tapet')){
+    const found = Object.keys(S.WALLPAPERS).find(k=> low.includes(k) || (k==='ocean'&&low.includes('ocean')) || (k==='forest'&&(low.includes('las')||low.includes('leś'))) || (k==='sunset'&&low.includes('zachód')) || (k==='mono'&&low.includes('mono')) || (k==='nebula'&&low.includes('nebul')));
+    if(found){ S.SETTINGS.wallpaperPreset=found; S.SETTINGS.customWallpaper=null; S.saveSettings(); S.applyTheme(); addMsg('Ustawiono tapetę: '+found+' ✅','bot'); return; }
+    window.NimbusApps.theme.open();
+    addMsg('Otwieram Personalizację, żebyś mógł wybrać tapetę.', 'bot'); return;
+  }
+  // tłumaczenie: "przetłumacz X na Y" / "przetłumacz: X"
+  let m = low.match(/przetłumacz(?:y)?\s+(.*?)\s+na\s+([a-ząćęłńóśźż]+)\s*$/i) || low.match(/przetlumacz(?:y)?\s+(.*?)\s+na\s+([a-ząćęłńóśźż]+)\s*$/i);
+  if(!m) m = low.match(/przet[łl]umacz:?\s+(.*)/i);
+  if(low.startsWith('przetłumacz') || low.startsWith('przetlumacz')){
+    let phrase, targetHint='angielski';
+    const m2 = text.match(/przet[łl]umacz(?:y)?[:]?\s+(.*?)(?:\s+na\s+(\w+))?$/i);
+    if(m2){ phrase=m2[1]; if(m2[2]) targetHint=m2[2]; }
+    if(!phrase){ addMsg('Napisz np.: „przetłumacz dzień dobry na angielski”.', 'bot'); return; }
+    addMsg('Tłumaczę…', 'bot');
+    const result = await translateText(phrase, targetHint);
+    if(result) addMsg('Tłumaczenie: '+result, 'bot');
+    else addMsg('Nie udało się połączyć z usługą tłumaczenia (sprawdź internet).', 'bot');
+    return;
+  }
+  // czytanie na głos
+  if(low.startsWith('przeczytaj')){
+    const phrase = text.replace(/^przeczytaj( na głos)?:?\s*/i,'');
+    if(!phrase){ addMsg('Napisz np.: „przeczytaj na głos: witaj w Faller\'OS”.', 'bot'); return; }
+    speak(phrase);
+    addMsg('🔊 Czytam: „'+phrase+'”', 'bot');
+    return;
+  }
+  // rozmiar czcionki
+  if(low.includes('powiększ') && low.includes('czcionk')){ S.SETTINGS.fontScale=Math.min(1.3,S.SETTINGS.fontScale+0.1); S.saveSettings(); S.applyTheme(); addMsg('Powiększono czcionkę.','bot'); return; }
+  if(low.includes('pomniejsz') && low.includes('czcionk')){ S.SETTINGS.fontScale=Math.max(0.85,S.SETTINGS.fontScale-0.1); S.saveSettings(); S.applyTheme(); addMsg('Pomniejszono czcionkę.','bot'); return; }
+
+  // domyślnie spróbuj rozpoznać nazwę aplikacji w zdaniu
+  const appId = findApp(low);
+  if(appId){ window.NimbusApps[appId].open(); addMsg('Otwieram: '+window.NimbusApps[appId].name+' ✅','bot'); return; }
+
+  addMsg('Mogę: otwierać aplikacje, zmieniać motyw/tapetę, tłumaczyć tekst i czytać na głos. Spróbuj np. „otwórz notatnik” albo „przeczytaj na głos: cześć”.', 'bot');
+}
+
+document.getElementById('ai-btn').onclick = ()=>{
+  document.getElementById('ai-panel').classList.toggle('open');
+};
+document.getElementById('lock-btn').onclick = ()=>{
+  document.getElementById('ai-panel').classList.remove('open');
+  document.getElementById('start-menu').classList.remove('open');
+  window.NimbusAuth.lock();
+};
+document.getElementById('ai-send').onclick = send;
+document.getElementById('ai-input').addEventListener('keydown', e=>{ if(e.key==='Enter') send(); });
+function send(){
+  const inp = document.getElementById('ai-input');
+  const val = inp.value.trim(); if(!val) return;
+  addMsg(val,'me'); inp.value='';
+  handleCommand(val);
+}
+})();
+</script>
+
+<script>
+/* =========================================================================
+   START — inicjalizacja pulpitu i menu Start po zarejestrowaniu aplikacji
+   ========================================================================= */
+window.renderDesktopIcons();
+</script>
+<script>
+/* =========================================================================
+   PYTHON — silnik wykonawczy (Pyodide, WebAssembly) + Konsola Python
+   Pyodide jest doczytywany leniwie z CDN dopiero przy pierwszym użyciu
+   (wymaga wtedy połączenia z internetem; potem przeglądarka go cache'uje).
+   ========================================================================= */
+(function(){
+"use strict";
+const { openWindow } = window.NimbusWM;
+const { getNode, createFile } = window.NimbusFS;
+
+const LS_PYPKGS = 'fallers_py_packages_v1';
+function lsGetRaw(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSetRaw(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function safeParseJ(s,fb){ try{ return JSON.parse(s); }catch(e){ return fb; } }
+function getSavedPackages(){ return safeParseJ(lsGetRaw(LS_PYPKGS), []); }
+function saveSavedPackages(arr){ lsSetRaw(LS_PYPKGS, JSON.stringify(arr)); }
+
+function loadScriptOnce(src){
+  return new Promise((resolve,reject)=>{
+    if(document.querySelector('script[data-src="'+src+'"]')){ resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.dataset.src = src;
+    s.onload = ()=>resolve();
+    s.onerror = ()=>reject(new Error('Nie udało się pobrać środowiska Python (sprawdź połączenie z internetem).'));
+    document.head.appendChild(s);
+  });
+}
+
+let pyodidePromise = null;
+function ensurePyodide(onStatus){
+  if(pyodidePromise) return pyodidePromise;
+  pyodidePromise = (async ()=>{
+    onStatus && onStatus('⏳ Pobieranie środowiska Python (Pyodide)… to nastąpi tylko raz.');
+    await loadScriptOnce('https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js');
+    const pyodide = await window.loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/' });
+    onStatus && onStatus('⏳ Ładowanie pakietu micropip…');
+    try{ await pyodide.loadPackage(['micropip']); }catch(e){ /* opcjonalne */ }
+    const saved = getSavedPackages();
+    if(saved.length){
+      onStatus && onStatus('⏳ Doinstalowywanie zapisanych pakietów: '+saved.join(', ')+'…');
+      try{
+        const micropip = pyodide.pyimport('micropip');
+        await micropip.install(saved);
+      }catch(e){ onStatus && onStatus('⚠️ Nie udało się doinstalować części zapisanych pakietów: '+(e.message||e)); }
+    }
+    onStatus && onStatus('✅ Python gotowy.');
+    return pyodide;
+  })();
+  return pyodidePromise;
+}
+
+async function installPackage(name, onStatus){
+  name = (name||'').trim();
+  if(!name) return {ok:false, error:'Podaj nazwę pakietu.'};
+  const pyodide = await ensurePyodide(onStatus);
+  onStatus && onStatus('📦 Instalowanie pakietu: '+name+'…');
+  try{
+    const micropip = pyodide.pyimport('micropip');
+    await micropip.install(name);
+    const saved = getSavedPackages();
+    const bare = name.split(/[<>=! ]/)[0];
+    if(!saved.includes(name) && !saved.includes(bare)){ saved.push(name); saveSavedPackages(saved); }
+    onStatus && onStatus('✅ Zainstalowano: '+name);
+    return {ok:true};
+  }catch(e){
+    const msg = e && e.message ? e.message : String(e);
+    onStatus && onStatus('❌ Błąd instalacji: '+msg);
+    return {ok:false, error:msg};
+  }
+}
+function listPackages(){ return getSavedPackages(); }
+function removePackage(name){ saveSavedPackages(getSavedPackages().filter(p=>p!==name)); }
+
+window.NimbusPython = { ensurePyodide, installPackage, listPackages, removePackage };
+
+async function runPythonCode(code, onStatus){
+  const pyodide = await ensurePyodide(onStatus);
+  let buf = '';
+  pyodide.setStdout({ batched:(s)=>{ buf += s + '\n'; } });
+  pyodide.setStderr({ batched:(s)=>{ buf += s + '\n'; } });
+  let error = null, value;
+  try{
+    value = await pyodide.runPythonAsync(code);
+  }catch(e){
+    error = e.message || String(e);
+  }finally{
+    pyodide.setStdout({}); pyodide.setStderr({});
+  }
+  return { output: buf, error, value };
+}
+window.NimbusPython.run = runPythonCode;
+
+/* --------------------------- KONSOLA PYTHON --------------------------- */
+registerApp('pyconsole','Konsola Python','🐍', function(openPath){
+  const rec = openWindow({app:'pyconsole', title: openPath ? openPath[openPath.length-1] : 'Konsola Python', icon:'🐍', width:600, height:480, render(body,r){
+    body.innerHTML = `
+      <div style="display:flex;flex-direction:column;height:100%;">
+        <div style="display:flex;gap:6px;padding:8px;border-bottom:1px solid var(--win-border);flex-wrap:wrap;">
+          <button class="btn primary" data-a="run">▶ Uruchom (Ctrl+Enter)</button>
+          <button class="btn" data-a="clear">Wyczyść konsolę</button>
+          <button class="btn" data-a="save">💾 Zapisz jako .py</button>
+          <button class="btn" data-a="pip">📦 Zainstaluj pakiet</button>
+          <button class="btn" data-a="pkgs">📃 Pakiety</button>
+          <span id="py-status" style="font-size:11px;color:var(--text-dim);align-self:center;margin-left:auto;">Python nie jest jeszcze załadowany</span>
+        </div>
+        <textarea class="ta" id="py-code" style="flex:2;min-height:0;border:none;border-radius:0;padding:12px;"></textarea>
+        <div class="term" id="py-out" style="flex:1;min-height:70px;border-top:1px solid var(--win-border);"></div>
+      </div>`;
+    const codeEl = body.querySelector('#py-code');
+    const outEl = body.querySelector('#py-out');
+    const statusEl = body.querySelector('#py-status');
+    let curPath = openPath ? openPath.slice() : null;
+
+    if(curPath){ const n=getNode(curPath); codeEl.value = n ? n.content : ''; }
+    else {
+      codeEl.value = "# Witaj w Konsoli Python (Faller'OS)!\n# Wpisz kod i kliknij Uruchom (albo Ctrl+Enter).\n\nfor i in range(5):\n    print('Cześć z Pythona', i)\n\nimport math\nprint('pierwiastek z 2 =', math.sqrt(2))\n";
+    }
+
+    function pr(text, cls){
+      const d=document.createElement('div'); d.className='term-line'; if(cls) d.style.color=cls;
+      d.textContent=text; outEl.appendChild(d); outEl.scrollTop=outEl.scrollHeight;
+    }
+    function setStatus(t){ statusEl.textContent=t; }
+
+    async function run(){
+      const code = codeEl.value;
+      pr('▶ Uruchamianie…', '#c98bff');
+      const res = await window.NimbusPython.run(code, setStatus);
+      if(res.output) pr(res.output.replace(/\n$/,''));
+      if(res.error) pr('❌ '+res.error, '#ff8b8b');
+      if(!res.output && !res.error) pr('(brak wyjścia)', 'var(--text-dim)');
+      setStatus('✅ Python gotowy.');
+    }
+    function save(){
+      const name = prompt('Zapisz jako:', curPath ? curPath[curPath.length-1] : 'skrypt.py'); if(!name) return;
+      createFile(['Dokumenty'], name, 'py', codeEl.value, 'text/x-python');
+      curPath = ['Dokumenty', name];
+      r.el.querySelector('.ttl').textContent = name;
+      window.renderDesktopIcons();
+      pr('💾 Zapisano jako '+name, 'var(--text-dim)');
+    }
+    body.querySelector('[data-a=run]').onclick = run;
+    body.querySelector('[data-a=clear]').onclick = ()=>{ outEl.innerHTML=''; };
+    body.querySelector('[data-a=save]').onclick = save;
+    body.querySelector('[data-a=pip]').onclick = async ()=>{
+      const name = prompt('Nazwa pakietu do zainstalowania (np. numpy, pandas, requests):'); if(!name) return;
+      pr('📦 Instaluję pakiet: '+name+'…', '#c98bff');
+      const res = await window.NimbusPython.installPackage(name, setStatus);
+      pr(res.ok ? '✅ Zainstalowano: '+name+' (zostanie doinstalowany automatycznie przy każdym kolejnym uruchomieniu Pythona)' : '❌ Błąd: '+res.error, res.ok ? 'var(--text-dim)' : '#ff8b8b');
+      setStatus('✅ Python gotowy.');
+    };
+    body.querySelector('[data-a=pkgs]').onclick = ()=>{
+      const list = window.NimbusPython.listPackages();
+      pr(list.length ? '📃 Zainstalowane pakiety: '+list.join(', ') : '📃 Brak zainstalowanych pakietów. Użyj „📦 Zainstaluj pakiet”.', 'var(--text-dim)');
+    };
+    codeEl.addEventListener('keydown', e=>{
+      if((e.ctrlKey||e.metaKey) && e.key==='Enter'){ e.preventDefault(); run(); }
+      if((e.ctrlKey||e.metaKey) && e.key==='s'){ e.preventDefault(); save(); }
+    });
+
+    pr('🐍 Konsola Python — środowisko Pyodide doczyta się automatycznie przy pierwszym uruchomieniu kodu.', 'var(--text-dim)');
+    if(openPath) setTimeout(run, 150);
+  }});
+  return rec;
+});
+
+})();
+</script>
+
+<script>
+
+(function(){
+  "use strict";
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('service-worker.js').then(reg=>{
+        console.log('Faller\'OS: service worker zarejestrowany', reg.scope);
+      }).catch(err=>{
+        console.log('Faller\'OS: rejestracja service workera nie powiodła się (prawdopodobnie strona otwarta z pliku lokalnego bez serwera).', err);
+      });
+    });
+  }
+
+  const installBtn = document.getElementById('install-btn');
+  let deferredPrompt = null;
+
+  window.addEventListener('beforeinstallprompt', (e)=>{
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.style.display = 'flex';
+  });
+
+  installBtn.addEventListener('click', async ()=>{
+    if(!deferredPrompt) return;
+    installBtn.style.display='none';
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+  });
+
+  window.addEventListener('appinstalled', ()=>{
+    installBtn.style.display='none';
+    deferredPrompt=null;
+  });
+
+  // jeżeli aplikacja już działa jako zainstalowana (standalone) — nie pokazuj przycisku
+  if(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true){
+    installBtn.style.display='none';
+  }
+})();
+</script>
+
+</body>
+</html>
